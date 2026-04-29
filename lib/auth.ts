@@ -21,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth(() => ({
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
   pages: {
     signIn: '/login',
     error: '/login',

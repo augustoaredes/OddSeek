@@ -133,7 +133,7 @@ export function BancaDashboard({ locale }: { locale: string }) {
     <>
       {showForm && <BetFormModal onSave={addBet} onClose={() => setShowForm(false)} />}
 
-      <div className="page-full">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
         {/* ── 5 KPIs ── */}
         <div className="banca-kpi-row">

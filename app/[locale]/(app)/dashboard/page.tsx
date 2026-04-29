@@ -136,9 +136,9 @@ export default async function DashboardPage({
             const dotColor = SPORT_DOTS[tip.sport] ?? '#8A8780';
             const isLive   = i < 2;
             const match    = tip.matchLabel.replace(/^[^\s]+\s/, '');
-            const parts    = match.split(' × ');
-            const home     = parts[0] ?? match;
-            const away     = parts[1] ?? '';
+            const parts    = match.split(/ × | vs /i);
+            const home     = parts[0]?.trim() ?? match;
+            const away     = parts[1]?.trim() ?? '';
             const evCls    = tip.ev >= 0.10 ? 'hi' : tip.ev >= 0.02 ? 'pos' : 'low';
 
             // Synthetic 1/X/2 odds from the one real odd we have
@@ -173,7 +173,7 @@ export default async function DashboardPage({
                   </div>
                   {away && (
                     <div className="ev-team-row">
-                      <div className="ev-league">{away}</div>
+                      <div className="ev-teams" style={{ opacity: 0.75 }}>{away}</div>
                     </div>
                   )}
                 </div>

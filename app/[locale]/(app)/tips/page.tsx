@@ -44,8 +44,9 @@ export default async function TipsPage({ searchParams }: Props) {
   const allTips = await getTips();
 
   let tips = sport === 'all' ? allTips : allTips.filter(t => t.sport === sport);
-  if (filter === 'elite') tips = tips.filter(t => t.ev >= 0.10);
-  if (filter === 'live')  tips = tips.slice(0, 3); // mocked: primeiros 3 são "ao vivo"
+  if (filter === 'elite')     tips = tips.filter(t => t.ev >= 0.10);
+  if (filter === 'live')      tips = tips.slice(0, 3);
+  if (filter === 'scheduled') tips = tips.slice(3); // mocked: primeiros 3 = ao vivo, restante = agendados
 
   const positiveEV = allTips.filter(t => t.ev > 0).length;
 
@@ -101,11 +102,14 @@ export default async function TipsPage({ searchParams }: Props) {
           ))}
           <span className="f-sep" />
           <Link href={filterHref('elite')} className={`f-tab${filter === 'elite' ? ' on ev-tab' : ' ev-tab'}`}>
-            Elite EV+
+            EV+
           </Link>
           <Link href={filterHref(filter === 'live' ? '' : 'live')} className={`f-tab${filter === 'live' ? ' on' : ''}`}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
             Ao vivo
+          </Link>
+          <Link href={filterHref(filter === 'scheduled' ? '' : 'scheduled')} className={`f-tab${filter === 'scheduled' ? ' on' : ''}`}>
+            Agendados
           </Link>
         </div>
       </div>
@@ -125,9 +129,9 @@ export default async function TipsPage({ searchParams }: Props) {
             const confOffset = circum - (tip.confidence / 100) * circum;
             const confColor  = tip.confidence >= 75 ? 'var(--lime)' : tip.confidence >= 60 ? 'var(--green)' : 'var(--muted)';
             const kelly = kellyStake(tip.probability, tip.odd);
-            const matchParts = tip.matchLabel.replace(/^[^\s]+\s/, '').split(' × ');
-            const home = matchParts[0] ?? '';
-            const away = matchParts[1] ?? '';
+            const matchParts = tip.matchLabel.replace(/^[^\s]+\s/, '').split(/ × | vs /i);
+            const home = matchParts[0]?.trim() ?? '';
+            const away = matchParts[1]?.trim() ?? '';
             const dotColor = SPORT_DOTS[tip.sport] ?? '#8A8780';
 
             return (

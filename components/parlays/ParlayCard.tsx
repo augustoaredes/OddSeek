@@ -1,3 +1,7 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { RiskBadge } from './RiskBadge';
 import { EVBadge } from '@/components/odds/EVBadge';
 import type { SuggestedParlay } from '@/lib/tips/parlay-suggestions';
@@ -8,6 +12,13 @@ interface ParlayCardProps {
 
 export function ParlayCard({ parlay }: ParlayCardProps) {
   const { analysis } = parlay;
+  const router = useRouter();
+  const locale = useLocale();
+
+  function handleSelect() {
+    const legs = parlay.legs.map(l => l.tip.id).join(',');
+    router.push(`/${locale}/banca/apostas?parlay=${legs}`);
+  }
 
   return (
     <article
@@ -73,8 +84,8 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
               {i + 1}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.2 }}>
-                {tip.matchLabel}
+              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {tip.matchLabel.replace(/^[^\s]+\s/, '')}
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
                 {tip.selection}{' '}
@@ -135,21 +146,24 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
 
       {/* CTA */}
       <button
+        onClick={handleSelect}
         style={{
           width: '100%',
-          padding: '10px 0',
+          padding: '12px 0',
           borderRadius: 8,
-          background: 'oklch(80% 0.3 115 / 0.12)',
-          border: '1px solid oklch(80% 0.3 115 / 0.3)',
-          color: 'var(--lime)',
-          fontSize: 12,
-          fontWeight: 700,
-          letterSpacing: '0.04em',
+          background: 'var(--lime)',
+          border: 'none',
+          color: '#000',
+          fontSize: 13,
+          fontWeight: 800,
+          fontFamily: 'var(--font-cond), Barlow Condensed, sans-serif',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
           cursor: 'pointer',
         }}
         type="button"
       >
-        Selecionar Múltipla
+        Selecionar Múltipla →
       </button>
     </article>
   );
