@@ -1,150 +1,169 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { OddSeekMark } from '@/components/brand/OddSeekMark';
 
 interface Props { locale: string }
+
+const mockRows = [
+  { match: 'Real Madrid vs PSG', league: 'UCL', odd: '2.10', ev: '+8.2%', ev_color: '#C8FC00', book: 'Bet365', selection: 'Vitória Madrid' },
+  { match: 'Man City vs Arsenal', league: 'Premier', odd: '1.85', ev: '+5.7%', ev_color: '#C8FC00', book: 'KTO', selection: 'Ambas Marcam' },
+  { match: 'Bayern vs Dortmund', league: 'Bundesliga', odd: '1.95', ev: '+4.1%', ev_color: '#00DC6E', book: 'Betano', selection: 'Over 2.5' },
+  { match: 'Flamengo vs Palmeiras', league: 'Brasileirão', odd: '3.20', ev: '+11.8%', ev_color: '#C8FC00', book: 'Stake', selection: 'Vitória Flam.' },
+  { match: 'LeBron James', league: 'NBA', odd: '1.72', ev: '+9.3%', ev_color: '#C8FC00', book: 'Bet365', selection: 'Over 25.5 pts' },
+];
+
+const avatarColors = [
+  { bg: '#C8FC00', text: '#000', initials: 'MA' },
+  { bg: '#00DC6E', text: '#000', initials: 'JF' },
+  { bg: '#4898FF', text: '#fff', initials: 'RL' },
+  { bg: '#FFAD00', text: '#000', initials: 'CS' },
+  { bg: '#C8FC00', text: '#000', initials: 'BM' },
+];
 
 export async function Hero({ locale }: Props) {
   const t = await getTranslations('hero');
 
   return (
-    <section className="hero">
+    <section className="hero-v2">
       <div className="field-bg" />
 
-      <div className="hero-inner">
-        {/* Left column */}
-        <div className="hero-left">
-          <div className="hero-kicker">
-            <div className="tb-dot" />
-            {t('kicker')}
+      <div className="hero-v2-inner">
+        {/* Badge pill */}
+        <div className="hero-v2-badge">
+          <span className="hero-v2-badge-dot" />
+          Atualizado em tempo real · 10+ casas de apostas
+        </div>
+
+        {/* Headline */}
+        <h1 className="hero-v2-h1">
+          Encontre apostas<br />
+          com <span className="hero-v2-hl">EV positivo</span><br />
+          <span className="hero-v2-stroke">em segundos.</span>
+        </h1>
+
+        {/* Subtitle */}
+        <p className="hero-v2-sub">
+          O OddSeek compara odds em 10+ casas, calcula o valor esperado real
+          e gerencia sua banca com Kelly automaticamente.
+        </p>
+
+        {/* Email capture */}
+        <form action={`/${locale}/registro`} method="GET" className="hero-v2-form">
+          <input
+            name="email"
+            type="email"
+            placeholder="seu@email.com"
+            className="hero-v2-input"
+            autoComplete="email"
+          />
+          <button type="submit" className="hero-v2-btn">
+            Começar grátis
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7h10M8 3l4 4-4 4" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </form>
+
+        {/* Social proof */}
+        <div className="hero-v2-social">
+          <div className="hero-v2-avatars">
+            {avatarColors.map((a, i) => (
+              <div
+                key={i}
+                className="hero-v2-avatar"
+                style={{ background: a.bg, color: a.text, zIndex: avatarColors.length - i }}
+              >
+                {a.initials}
+              </div>
+            ))}
           </div>
-
-          <div className="hero-h1">
-            {t('h1_1')}<br />
-            <span className="hero-hl">{t('h1_2')}</span>
-            <span className="hero-stroke">{t('h1_3')}</span>
-          </div>
-
-          <p className="hero-sub">{t('sub')}</p>
-
-          <div className="hero-actions">
-            <Link href={`/${locale}/registro`} className="btn-hero btn-hero-lime">
-              {t('cta_primary')}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 7h10M8 3l4 4-4 4" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-            <Link href={`/${locale}#matches`} className="btn-hero btn-hero-ghost">
-              {t('cta_secondary')}
-            </Link>
-          </div>
-
-          <div className="hero-pills">
-            <div className="hero-pill">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <circle cx="6" cy="6" r="4.5" stroke="var(--lime)" strokeWidth="1.2" />
-                <circle cx="6" cy="6" r="1.5" fill="var(--lime)" />
-              </svg>
-              {t('pill_ev')}
-            </div>
-            <div className="hero-pill">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 9l2-3 2 2 2-4 2 2" stroke="var(--lime)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {t('pill_books')}
-            </div>
-            <div className="hero-pill">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M4 6a2 2 0 104 0 2 2 0 00-4 0z" stroke="var(--lime)" strokeWidth="1.2" />
-                <path d="M1 10c0-2.2 2.2-4 5-4s5 1.8 5 4" stroke="var(--lime)" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
-              {t('pill_live')}
-            </div>
+          <div className="hero-v2-social-text">
+            <span className="hero-v2-social-num">+12.000</span> apostadores já usam o OddSeek
           </div>
         </div>
 
-        {/* Right — Broadcast Card */}
-        <div className="bc-wrap" style={{ position: 'relative' }}>
-          <div className="bc-card">
-            <div className="bc-top">
-              <div className="bc-league-tag">Champions League · Semifinal</div>
-              <div className="bc-live-tag">
-                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }} />
-                AO VIVO
+        {/* App screenshot mockup */}
+        <div className="hero-v2-screen-wrap">
+          <div className="hero-v2-screen">
+            {/* Browser chrome */}
+            <div className="hero-v2-chrome">
+              <div className="hero-v2-dots">
+                <span style={{ background: '#FF5F57' }} />
+                <span style={{ background: '#FEBC2E' }} />
+                <span style={{ background: '#28C840' }} />
+              </div>
+              <div className="hero-v2-url">oddseek.com/tips</div>
+            </div>
+
+            {/* App nav */}
+            <div className="hero-v2-appnav">
+              {['Dashboard', 'Tips EV+', 'Comparador', 'Múltiplas', 'Banca'].map((item, i) => (
+                <div
+                  key={item}
+                  className={`hero-v2-navitem${i === 1 ? ' active' : ''}`}
+                >
+                  {item}
+                </div>
+              ))}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF0033', animation: 'pulse 1.2s ease-in-out infinite' }} />
+                <span style={{ fontSize: 10, color: '#FF0033', fontWeight: 700 }}>14 ao vivo</span>
               </div>
             </div>
 
-            <div className="bc-match">
-              <div className="bc-team">
-                <div className="bc-badge">
-                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <circle cx="11" cy="11" r="8.5" stroke="var(--muted)" strokeWidth="1.3" />
-                    <path d="M4 8h14M4 14h14M11 2.5v17" stroke="var(--muted)" strokeWidth=".9" />
-                  </svg>
-                </div>
-                <div className="bc-tname">Real Madrid</div>
-                <div className="bc-trec">1° La Liga</div>
-              </div>
-
-              <div className="bc-vs">
-                <div className="bc-score">1 — 0</div>
-                <div className="bc-min">67&apos;</div>
-              </div>
-
-              <div className="bc-team">
-                <div className="bc-badge">
-                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <rect x="3" y="3" width="16" height="16" rx="2" stroke="var(--muted)" strokeWidth="1.3" />
-                    <path d="M3 11h16M11 3v16" stroke="var(--muted)" strokeWidth=".9" />
-                  </svg>
-                </div>
-                <div className="bc-tname">Man City</div>
-                <div className="bc-trec">2° Premier</div>
-              </div>
+            {/* Table header */}
+            <div className="hero-v2-thead">
+              <div className="hero-v2-th">Partida</div>
+              <div className="hero-v2-th">Aposta</div>
+              <div className="hero-v2-th hero-v2-th-right">Odd</div>
+              <div className="hero-v2-th hero-v2-th-right">EV</div>
+              <div className="hero-v2-th hero-v2-th-right">Casa</div>
             </div>
 
-            <div className="bc-body">
-              <div className="bc-ev-row">
+            {/* Table rows */}
+            {mockRows.map((row, i) => (
+              <div key={i} className={`hero-v2-trow${i === 0 ? ' hero-v2-trow-best' : ''}`}>
                 <div>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
-                    Aposta recomendada
-                  </div>
-                  <div className="bc-tip">Vitória Real Madrid</div>
+                  <div className="hero-v2-match">{row.match}</div>
+                  <div className="hero-v2-league">{row.league}</div>
                 </div>
-                <div className="bc-ev-num">
-                  <div className="bc-ev-val">92</div>
-                  <div className="bc-ev-label">confiança IA</div>
-                </div>
+                <div className="hero-v2-selection">{row.selection}</div>
+                <div className="hero-v2-odd">{row.odd}</div>
+                <div className="hero-v2-ev" style={{ color: row.ev_color }}>{row.ev}</div>
+                <div className="hero-v2-book">{row.book}</div>
               </div>
+            ))}
 
-              <div className="bc-odds">
-                <div className="bc-odd">
-                  <div className="bc-oh">Betano</div>
-                  <div className="bc-ov" style={{ color: 'var(--muted)' }}>1.95</div>
-                </div>
-                <div className="bc-odd best">
-                  <div className="bc-oh">Bet365 ★</div>
-                  <div className="bc-ov">2.10</div>
-                  <div className="bc-oe">EV +8.2%</div>
-                </div>
-                <div className="bc-odd">
-                  <div className="bc-oh">KTO</div>
-                  <div className="bc-ov" style={{ color: 'var(--muted)' }}>1.88</div>
-                </div>
-              </div>
-            </div>
+            {/* Blurred gradient at bottom (teaser effect) */}
+            <div className="hero-v2-screen-blur" />
           </div>
 
-          {/* Float card */}
-          <div className="float-card">
-            <div className="fi">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M7.5 1.5l1.8 4h4L10 8l1.5 4.5L7.5 10l-4 2.5L5 8 1.7 5.5h4z" stroke="var(--amber)" strokeWidth="1.2" strokeLinejoin="round" />
+          {/* Full-width fade at bottom */}
+          <div className="hero-v2-screen-fade" />
+
+          {/* Float cards */}
+          <div className="hero-v2-float hero-v2-float-left">
+            <div className="hero-v2-float-icon" style={{ background: 'oklch(80% 0.3 115 / 0.15)' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 12l3-4.5 2.5 2L11 5l2 3" stroke="var(--lime)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <div>
-              <div className="fv">Odd subindo</div>
-              <div className="fs">Juventus Over 2.5 → 2.05</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--lime)', fontFamily: 'var(--font-cond)', lineHeight: 1.1 }}>+R$3.240</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>lucro este mês</div>
+            </div>
+          </div>
+
+          <div className="hero-v2-float hero-v2-float-right">
+            <div className="hero-v2-float-icon" style={{ background: 'oklch(65% 0.2 150 / 0.15)' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="5.5" stroke="var(--green)" strokeWidth="1.5" />
+                <circle cx="8" cy="8" r="2.5" stroke="var(--green)" strokeWidth="1.2" />
+                <circle cx="8" cy="8" r=".8" fill="var(--green)" />
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-cond)', lineHeight: 1.1 }}>EV +11.8%</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>Flamengo vs Palmeiras</div>
             </div>
           </div>
         </div>
