@@ -1,25 +1,28 @@
 /**
  * Unified odds fetcher.
  *
- * Set ODDS_API_KEY in env to use live data.
- * Falls back to mock data when key is absent or on error.
+ * Priority:
+ *   1. ODDSPAPI_KEY  → OddsPapi (preferred, Brazilian bookmakers)
+ *   2. ODDS_API_KEY  → The Odds API (fallback)
+ *   3. Mock data     → static seed data
  *
- * Redis cache TTL:
- *   - Live data:  5 min  (preserves free quota, ~288 req/day for 5 sports)
- *   - Mock data:  no cache needed (static)
+ * Redis cache TTL: 5 min for live data.
  */
 
 import { redis } from '@/lib/redis';
 import { MOCK_EVENTS, getEventById as getMockEventById } from './mock-data';
 import { fetchAllOdds } from './adapters/the-odds-api';
+import { fetchAllOddsOddsPapi } from './adapters/oddspapi';
 import type { OddsEvent } from './types';
 
 const CACHE_KEY = 'odds:live:all';
 const CACHE_TTL = 300; // 5 minutes
 
 async function getLiveEvents(): Promise<OddsEvent[]> {
-  const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return MOCK_EVENTS;
+  const oddsPapiKey = process.env.ODDSPAPI_KEY;
+  const theOddsKey  = process.env.ODDS_API_KEY;
+
+  if (!oddsPapiKey && !theOddsKey) return MOCK_EVENTS;
 
   // Try Redis cache first
   if (redis) {
@@ -28,12 +31,16 @@ async function getLiveEvents(): Promise<OddsEvent[]> {
   }
 
   try {
-    const events = await fetchAllOdds(apiKey);
-    if (events.length === 0) {
-      // API returned nothing — fallback to mock to avoid empty page
-      return MOCK_EVENTS;
+    let events: OddsEvent[];
+
+    if (oddsPapiKey) {
+      events = await fetchAllOddsOddsPapi(oddsPapiKey);
+    } else {
+      events = await fetchAllOdds(theOddsKey!);
     }
-    // Persist in Redis
+
+    if (events.length === 0) return MOCK_EVENTS;
+
     if (redis) {
       await redis.set(CACHE_KEY, events, { ex: CACHE_TTL });
     }
@@ -57,5 +64,5 @@ export async function getEventById(id: string): Promise<OddsEvent | undefined> {
 
 /** Whether we are using live data right now. */
 export function isLiveMode(): boolean {
-  return Boolean(process.env.ODDS_API_KEY);
+  return Boolean(process.env.ODDSPAPI_KEY ?? process.env.ODDS_API_KEY);
 }
