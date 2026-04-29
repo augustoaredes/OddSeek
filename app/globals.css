@@ -24,6 +24,7 @@
   --green: #00E87A;
   --amber: #FFB800;
   --blue: #4FA3FF;
+  --muted: #9A9590;
 }
 
 /* App palette overrides — new OddSeek design (2025) */
@@ -37,7 +38,7 @@
   --border:  #1E2025;
   --bd2:     #282B31;
   --text:    #EDEAE3;
-  --muted:   #5E5C57;
+  --muted:   #8A8780;
   --dim:     #2A2B2F;
   --lime:    #C8FC00;
   --red:     #FF0033;

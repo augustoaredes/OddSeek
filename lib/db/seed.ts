@@ -17,7 +17,7 @@ const LEAGUES: Record<string, string[]> = {
   Vôlei: ['Superliga', 'CEV Champions', 'FIVB World League', 'LNL'],
   Rugby: ['Top 14', 'Premiership', 'Super Rugby', 'Six Nations'],
 };
-const BOOKS = ['Bet365', 'Betano', 'Sportingbet', 'Stake'];
+const BOOKS = ['Bet365', 'Betano', 'Sportingbet', 'Pixbet', 'Superbet', 'Esportes da Sorte'];
 const MARKETS = ['1X2', 'Handicap Asiático', 'Over/Under', 'Ambos Marcam', 'Vencedor do Set'];
 const FOOTBALL_TEAMS = [
   'Flamengo', 'Corinthians', 'Palmeiras', 'São Paulo', 'Santos', 'Grêmio',
@@ -60,11 +60,19 @@ async function main() {
   await db.insert(users).values(extraUserData).onConflictDoNothing();
 
   // ── Affiliate links ────────────────────────────────────────────────────────
+  const BOOK_URLS: Record<string, string> = {
+    'Bet365':           'https://www.bet365.com/pt-br/',
+    'Betano':           'https://www.betano.com.br/',
+    'Sportingbet':      'https://www.sportingbet.com.br/',
+    'Pixbet':           'https://pixbet.com/',
+    'Superbet':         'https://superbet.com.br/',
+    'Esportes da Sorte':'https://www.esportesdasorte.com.br/',
+  };
   const bookLinks = BOOKS.map((book) => ({
     book,
     country: 'BR',
-    baseUrl: `https://www.${book.toLowerCase()}.com/pt-br/`,
-    params: { affid: `oddseek_${book.toLowerCase()}` },
+    baseUrl: BOOK_URLS[book] ?? `https://www.${book.toLowerCase().replace(/\s+/g, '')}.com.br/`,
+    params: { affid: `oddseek_${book.toLowerCase().replace(/\s+/g, '_')}` },
     active: true,
   }));
   await db.insert(affiliateLinks).values(bookLinks).onConflictDoNothing();

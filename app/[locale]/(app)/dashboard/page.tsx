@@ -26,10 +26,12 @@ const SPORT_FILTERS = [
 ];
 
 const staticOdds = [
-  { house: 'Bet365',      fill: 100, val: '2.10', best: true,  ev: '+8.2%' },
-  { house: 'Betano',      fill: 93,  val: '1.95', best: false, ev: null },
-  { house: 'Sportingbet', fill: 90,  val: '1.92', best: false, ev: null },
-  { house: '1xBet',       fill: 85,  val: '1.88', best: false, ev: null },
+  { house: 'Bet365',            fill: 100, val: '2.10', best: true,  ev: '+8.2%' },
+  { house: 'Betano',            fill: 93,  val: '1.95', best: false, ev: null },
+  { house: 'Sportingbet',       fill: 90,  val: '1.92', best: false, ev: null },
+  { house: 'Superbet',          fill: 87,  val: '1.90', best: false, ev: null },
+  { house: 'Pixbet',            fill: 85,  val: '1.88', best: false, ev: null },
+  { house: 'Esportes da Sorte', fill: 83,  val: '1.85', best: false, ev: null },
 ];
 
 const staticAlerts = [

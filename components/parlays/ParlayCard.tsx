@@ -163,7 +163,7 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
         }}
         type="button"
       >
-        Selecionar Múltipla →
+        Registrar na Banca →
       </button>
     </article>
   );
