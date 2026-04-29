@@ -5,20 +5,60 @@ import Link from 'next/link';
 import { loadBets, saveBets, loadInitialBankroll, buildEquityCurve, toSettledBet } from '@/lib/banca/store';
 import type { BankBet } from '@/lib/banca/store';
 import { totalProfit, roi as calcROI, hitRate, averageOdd } from '@/lib/banca/metrics';
-import { generateAlerts } from '@/lib/banca/alerts';
-import { BankCard } from './BankCard';
 import { BetFormModal } from './BetFormModal';
 
-const statusColor = (s: string) =>
-  s === 'won' ? 'var(--green)' : s === 'lost' ? 'var(--red)' : s === 'pending' ? 'var(--amber)' : 'var(--muted)';
-
 const statusLabel = (s: string) =>
-  ({ won: 'Ganhou', lost: 'Perdeu', pending: 'Pendente', void: 'Void', cashout: 'Cashout' }[s] ?? s);
+  ({ won: 'Ganhou', lost: 'Perdeu', pending: 'Aberta', void: 'Void', cashout: 'Cashout' }[s] ?? s);
 
-function profitOf(bet: BankBet): number {
-  if (bet.status === 'won')  return bet.stake * (bet.odd - 1);
-  if (bet.status === 'lost') return -bet.stake;
-  return 0;
+const txBadgeClass = (s: string) =>
+  s === 'won' ? 'win' : s === 'lost' ? 'loss' : 'pend';
+
+function kellyStake(bankroll: number, prob: number, odd: number): number {
+  const b = odd - 1;
+  const k = (prob * b - (1 - prob)) / b;
+  const half = Math.max(k * 0.5, 0);
+  const capped = Math.min(half * bankroll, bankroll * 0.03);
+  return Math.round(capped);
+}
+
+function EquityCurveChart({ curve, initial }: { curve: { balance: number }[]; initial: number }) {
+  if (curve.length < 2) {
+    return (
+      <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 12 }}>
+        Registre apostas para ver o gráfico.
+      </div>
+    );
+  }
+
+  const W = 600; const H = 160;
+  const values = curve.map(c => c.balance);
+  const min = Math.min(...values, initial);
+  const max = Math.max(...values, initial);
+  const range = max - min || 1;
+  const pts = values.map((v, i) => [
+    (i / (values.length - 1)) * W,
+    H - ((v - min) / range) * (H - 16) - 8,
+  ]);
+  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const fillD = `${pathD} L${W},${H} L0,${H} Z`;
+  const last = pts[pts.length - 1];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 160 }}>
+      <defs>
+        <linearGradient id="bcFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--lime)" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="var(--lime)" stopOpacity="0.01" />
+        </linearGradient>
+      </defs>
+      <line x1="0" y1={H / 3} x2={W} y2={H / 3} stroke="var(--border)" strokeWidth="1" />
+      <line x1="0" y1={(H * 2) / 3} x2={W} y2={(H * 2) / 3} stroke="var(--border)" strokeWidth="1" />
+      <path d={fillD} fill="url(#bcFill)" />
+      <path d={pathD} fill="none" stroke="var(--lime)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r="8" fill="var(--lime)" opacity="0.15" />
+      <circle cx={last[0]} cy={last[1]} r="3.5" fill="var(--lime)" />
+    </svg>
+  );
 }
 
 export function BancaDashboard({ locale }: { locale: string }) {
@@ -26,6 +66,8 @@ export function BancaDashboard({ locale }: { locale: string }) {
   const [initialBankroll, setInitialBankroll] = useState(2000);
   const [showForm,        setShowForm]        = useState(false);
   const [hydrated,        setHydrated]        = useState(false);
+  const [kellyOdd,        setKellyOdd]        = useState('2.10');
+  const [kellyProb,       setKellyProb]       = useState('54');
 
   useEffect(() => {
     setBets(loadBets());
@@ -33,7 +75,7 @@ export function BancaDashboard({ locale }: { locale: string }) {
     setHydrated(true);
   }, []);
 
-  const { settled, profit, currentBalance, roiValue, hr, pending, alerts, equityCurve, won, lost, avgOdd, bestBet } =
+  const { settled, profit, currentBalance, roiValue, hr, pending, won, lost, avgOdd, bestBet, equityCurve } =
     useMemo(() => {
       const nonNull = bets.map(toSettledBet).filter(Boolean) as NonNullable<ReturnType<typeof toSettledBet>>[];
       const profit         = totalProfit(nonNull);
@@ -41,19 +83,15 @@ export function BancaDashboard({ locale }: { locale: string }) {
       const roiValue       = calcROI(nonNull);
       const hr             = hitRate(nonNull);
       const pending        = bets.filter(b => b.status === 'pending');
-      const alerts         = generateAlerts(nonNull, currentBalance, initialBankroll, currentBalance * 0.03);
+      const won            = nonNull.filter(b => b.status === 'won').length;
+      const lost           = nonNull.filter(b => b.status === 'lost').length;
+      const avgOdd         = averageOdd(nonNull);
+      const bestBet        = nonNull.length > 0
+        ? nonNull.reduce((b, c) => (c.stake * (c.odd - 1) > b.stake * (b.odd - 1) ? c : b), nonNull[0])
+        : null;
       const equityCurve    = buildEquityCurve(bets, initialBankroll);
-      const won  = nonNull.filter(b => b.status === 'won').length;
-      const lost = nonNull.filter(b => b.status === 'lost').length;
-      const avgOdd = averageOdd(nonNull);
-      const profits = bets.map(b => ({ bet: b, p: profitOf(b) }));
-      const bestBet = profits.length > 0 ? profits.reduce((a, x) => x.p > a.p ? x : a, profits[0]) : null;
-      return { settled: nonNull, profit, currentBalance, roiValue, hr, pending, alerts, equityCurve, won, lost, avgOdd, bestBet };
+      return { settled: nonNull, profit, currentBalance, roiValue, hr, pending, won, lost, avgOdd, bestBet, equityCurve };
     }, [bets, initialBankroll]);
-
-  const recent = useMemo(() =>
-    [...bets].sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime()).slice(0, 8),
-    [bets]);
 
   function addBet(bet: BankBet) {
     const next = [bet, ...bets];
@@ -69,227 +107,274 @@ export function BancaDashboard({ locale }: { locale: string }) {
     saveBets(next);
   }
 
+  function deleteBet(id: string) {
+    const next = bets.filter(b => b.id !== id);
+    setBets(next);
+    saveBets(next);
+  }
+
+  const kellyResult = useMemo(() => {
+    const odd  = parseFloat(kellyOdd)  || 2.0;
+    const prob = parseFloat(kellyProb) / 100 || 0.5;
+    return kellyStake(currentBalance, prob, odd);
+  }, [kellyOdd, kellyProb, currentBalance]);
+
+  const recentBets = useMemo(() =>
+    [...bets].sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime()),
+    [bets]);
+
+  const progressPct = Math.min(100, Math.max(0,
+    ((currentBalance - initialBankroll * 0.5) / (initialBankroll * 1.5 - initialBankroll * 0.5)) * 100
+  ));
+
   if (!hydrated) return null;
 
   return (
     <>
       {showForm && <BetFormModal onSave={addBet} onClose={() => setShowForm(false)} />}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="page-full">
 
-        {/* Nav tabs + Nova aposta */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-            {settled.length} apostas liquidadas · {pending.length} pendentes
-          </p>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[
-              { href: `/${locale}/banca`,          label: 'Overview', active: true },
-              { href: `/${locale}/banca/apostas`,  label: 'Apostas' },
-              { href: `/${locale}/banca/insights`, label: 'Insights' },
-            ].map(tab => (
-              <Link key={tab.href} href={tab.href}
-                style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700,
-                  textDecoration: 'none',
-                  background: tab.active ? 'var(--lime)' : 'var(--s2)',
-                  color: tab.active ? 'var(--bg)' : 'var(--muted)',
-                  border: '1px solid var(--border)' }}>
-                {tab.label}
-              </Link>
-            ))}
-            <button onClick={() => setShowForm(true)} className="btn btn-lime"
-              style={{ fontSize: 12, padding: '6px 14px' }}>
-              + Nova aposta
-            </button>
+        {/* ── 5 KPIs ── */}
+        <div className="banca-kpi-row">
+          <div className="bkpi">
+            <div className="bkpi-label">Banca atual</div>
+            <div className="bkpi-val" style={{ color: 'var(--lime)' }}>R${currentBalance.toFixed(0)}</div>
+            <div className="bkpi-sub">{profit >= 0 ? '↑ +' : '↓ '}R${Math.abs(profit).toFixed(0)} · {roiValue >= 0 ? '+' : ''}{roiValue.toFixed(1)}%</div>
+          </div>
+          <div className="bkpi">
+            <div className="bkpi-label">ROI total</div>
+            <div className="bkpi-val" style={{ color: 'var(--green)' }}>{roiValue >= 0 ? '+' : ''}{roiValue.toFixed(1)}%</div>
+            <div className="bkpi-sub">{settled.length} apostas fechadas</div>
+          </div>
+          <div className="bkpi">
+            <div className="bkpi-label">Taxa de acerto</div>
+            <div className="bkpi-val" style={{ color: 'var(--amber)' }}>{(hr * 100).toFixed(0)}%</div>
+            <div className="bkpi-sub">{won} vitórias / {lost} derrotas</div>
+          </div>
+          <div className="bkpi">
+            <div className="bkpi-label">Odd média</div>
+            <div className="bkpi-val" style={{ color: 'var(--red)' }}>{avgOdd > 0 ? avgOdd.toFixed(2) : '—'}</div>
+            <div className="bkpi-sub">Abertas: {pending.length}</div>
+          </div>
+          <div className="bkpi">
+            <div className="bkpi-label">Melhor aposta</div>
+            <div className="bkpi-val" style={{ color: 'var(--blue)' }}>
+              {bestBet ? `+R$${(bestBet.stake * (bestBet.odd - 1)).toFixed(0)}` : '—'}
+            </div>
+            <div className="bkpi-sub">{bestBet ? `odd ${bestBet.odd.toFixed(2)}` : 'Nenhuma'}</div>
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="kpi-row">
-          {[
-            { label: 'Saldo Atual',    value: `R$${currentBalance.toFixed(0)}`,
-              delta: `${profit >= 0 ? '+' : ''}R$${profit.toFixed(0)} lucro`,
-              accent: profit >= 0 ? 'var(--green)' : 'var(--red)' },
-            { label: 'ROI Total',      value: `${roiValue >= 0 ? '+' : ''}${roiValue.toFixed(1)}%`,
-              delta: `${settled.length} apostas`,
-              accent: roiValue >= 0 ? 'var(--lime)' : 'var(--red)' },
-            { label: 'Taxa de Acerto', value: `${(hr * 100).toFixed(0)}%`,
-              delta: `${won} vitórias · ${lost} derrotas`,
-              accent: 'var(--blue)' },
-            { label: 'Pendentes',      value: `${pending.length}`,
-              delta: `R$${pending.reduce((s, b) => s + b.stake, 0).toFixed(0)} em jogo`,
-              accent: 'var(--amber)' },
-          ].map(kpi => (
-            <div key={kpi.label} className="kpi" style={{ '--kpi-accent': kpi.accent } as React.CSSProperties}>
-              <div className="kpi-label">{kpi.label}</div>
-              <div className="kpi-val" style={{ color: kpi.accent }}>{kpi.value}</div>
-              <div className="kpi-delta">{kpi.delta}</div>
+        {/* ── Main grid ── */}
+        <div className="banca-content-grid">
+
+          {/* Left column */}
+          <div className="banca-main-col">
+
+            {/* Nav tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[
+                  { href: `/${locale}/banca`,          label: 'Overview', active: true },
+                  { href: `/${locale}/banca/apostas`,  label: 'Apostas' },
+                  { href: `/${locale}/banca/insights`, label: 'Insights' },
+                ].map(tab => (
+                  <Link key={tab.href} href={tab.href} className="f-tab"
+                    style={tab.active ? { borderColor: 'var(--lime)', color: 'var(--lime)', background: 'oklch(78% 0.3 115 / 0.06)' } : {}}>
+                    {tab.label}
+                  </Link>
+                ))}
+              </div>
+              <button onClick={() => setShowForm(true)} className="btn btn-lime"
+                style={{ fontSize: 11, height: 30, padding: '0 14px' }}>
+                + Nova aposta
+              </button>
             </div>
-          ))}
-        </div>
 
-        {/* Main 2-col */}
-        <div className="page-grid" style={{ '--pg-cols': '1fr 264px', gap: 14 } as React.CSSProperties}>
+            {/* Chart */}
+            <div className="chart-card">
+              <div className="cc-head">
+                <div className="cc-title">Evolução da Banca</div>
+                <div className="cc-period">
+                  {['7d', '30d', '90d', 'Tudo'].map((p, i) => (
+                    <button key={p} className={`period-btn${i === 1 ? ' on' : ''}`}>{p}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="cc-body">
+                <div className="cc-chart-area">
+                  <EquityCurveChart curve={equityCurve} initial={initialBankroll} />
+                </div>
+                <div className="cc-legend">
+                  <div className="cc-legend-item">
+                    <div className="cc-legend-dot" style={{ background: 'var(--lime)' }} />Banca
+                  </div>
+                  <div className="cc-legend-item">
+                    <div className="cc-legend-dot" style={{ background: 'var(--blue)', opacity: 0.5 }} />Linha base
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          {/* Left */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <BankCard
-              currentBalance={currentBalance}
-              initialBalance={initialBankroll}
-              totalProfit={profit}
-              roi={roiValue}
-              equityCurve={equityCurve}
-              riskProfile="moderado"
-            />
-
-            {/* Recent bets */}
-            <div className="card" style={{ overflow: 'hidden' }}>
-              <div className="card-head">
-                <div className="card-title">Apostas Recentes</div>
+            {/* Transactions */}
+            <div className="tx-card">
+              <div className="tx-head">
+                <span className="cc-title">Histórico de Apostas</span>
                 <Link href={`/${locale}/banca/apostas`}
-                  style={{ fontSize: 11, color: 'var(--lime)', textDecoration: 'none', fontWeight: 700 }}>
+                  style={{ fontSize: 11, color: 'var(--lime)', fontWeight: 700, textDecoration: 'none' }}>
                   Ver todas →
                 </Link>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 72px 80px',
-                gap: 12, padding: '8px 18px',
-                background: 'var(--s2)', borderBottom: '1px solid var(--border)',
-                fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
-                textTransform: 'uppercase', color: 'var(--muted)' }}>
-                <div>Aposta</div>
-                <div style={{ textAlign: 'right' }}>Odd · Stake</div>
-                <div style={{ textAlign: 'center' }}>Status</div>
-                <div style={{ textAlign: 'right' }}>Resultado</div>
-              </div>
-
-              {recent.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
+              {recentBets.length === 0 ? (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
                   Nenhuma aposta ainda.{' '}
                   <button onClick={() => setShowForm(true)}
-                    style={{ background: 'none', border: 'none', color: 'var(--lime)', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--lime)', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
                     Adicionar →
                   </button>
                 </div>
-              ) : recent.map((bet, i) => (
-                <div key={bet.id} style={{
-                  display: 'grid', gridTemplateColumns: '1fr 64px 72px 80px',
-                  alignItems: 'center', gap: 12, padding: '10px 18px',
-                  borderBottom: i < recent.length - 1 ? '1px solid var(--border)' : 'none',
-                }}>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{bet.selection}</div>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1 }}>
-                      {bet.matchLabel} · {bet.market}
-                    </div>
+              ) : (
+                <>
+                  <div className="tx-table-head">
+                    <div className="txh">Data</div>
+                    <div className="txh">Partida / Aposta</div>
+                    <div className="txh" style={{ textAlign: 'right' }}>Valor</div>
+                    <div className="txh" style={{ textAlign: 'right' }}>Odd</div>
+                    <div className="txh" style={{ textAlign: 'center' }}>Resultado</div>
+                    <div className="txh" style={{ textAlign: 'right' }}>P&L</div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-cond)', color: 'var(--text)' }}>
-                      {bet.odd.toFixed(2)}
+                  {recentBets.slice(0, 10).map(bet => (
+                    <div key={bet.id} className="tx-row">
+                      <div className="tx-date">
+                        {new Date(bet.placedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                      </div>
+                      <div>
+                        <div className="tx-match-name">{bet.matchLabel}</div>
+                        <div className="tx-tip-label">{bet.selection}</div>
+                      </div>
+                      <div className="tx-val">R${bet.stake}</div>
+                      <div className="tx-odd">{bet.odd.toFixed(2)}</div>
+                      <div className="tx-result">
+                        {bet.status === 'pending' ? (
+                          <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
+                            <button onClick={() => updateStatus(bet.id, 'won')}
+                              style={{ fontSize: 9, fontWeight: 700, padding: '3px 5px', borderRadius: 4, background: 'oklch(65% 0.25 155 / 0.12)', border: '1px solid oklch(65% 0.25 155 / 0.2)', color: 'var(--green)', cursor: 'pointer' }}>
+                              ✓W
+                            </button>
+                            <button onClick={() => updateStatus(bet.id, 'lost')}
+                              style={{ fontSize: 9, fontWeight: 700, padding: '3px 5px', borderRadius: 4, background: 'oklch(50% 0.28 25 / 0.1)', border: '1px solid oklch(50% 0.28 25 / 0.2)', color: 'var(--red)', cursor: 'pointer' }}>
+                              ✗L
+                            </button>
+                          </div>
+                        ) : (
+                          <span className={`tx-badge ${txBadgeClass(bet.status)}`}>
+                            {statusLabel(bet.status)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="tx-pl" style={{
+                        color: bet.status === 'won' ? 'var(--green)' : bet.status === 'lost' ? 'var(--red)' : 'var(--muted)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6,
+                      }}>
+                        {bet.status === 'won'  ? `+R$${(bet.stake * (bet.odd - 1)).toFixed(0)}` :
+                         bet.status === 'lost' ? `-R$${bet.stake.toFixed(0)}` : '—'}
+                        <button onClick={() => deleteBet(bet.id)}
+                          style={{ background: 'none', border: 'none', color: 'var(--dim)', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>
+                          ×
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--muted)' }}>R${bet.stake}</div>
-                  </div>
-
-                  {/* Inline status actions for pending */}
-                  {bet.status === 'pending' ? (
-                    <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
-                      <button onClick={() => updateStatus(bet.id, 'won')}
-                        style={{ fontSize: 9, fontWeight: 700, padding: '3px 6px', borderRadius: 4,
-                          background: 'var(--green)22', border: '1px solid var(--green)44',
-                          color: 'var(--green)', cursor: 'pointer' }}>
-                        ✓W
-                      </button>
-                      <button onClick={() => updateStatus(bet.id, 'lost')}
-                        style={{ fontSize: 9, fontWeight: 700, padding: '3px 6px', borderRadius: 4,
-                          background: 'var(--red)22', border: '1px solid var(--red)44',
-                          color: 'var(--red)', cursor: 'pointer' }}>
-                        ✗L
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: statusColor(bet.status),
-                        letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        {statusLabel(bet.status)}
-                      </span>
-                    </div>
-                  )}
-
-                  <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 700,
-                    fontFamily: 'var(--font-cond)',
-                    color: bet.status === 'won' ? 'var(--green)' : bet.status === 'lost' ? 'var(--red)' : 'var(--muted)' }}>
-                    {bet.status === 'won'  ? `+R$${(bet.stake * (bet.odd - 1)).toFixed(1)}` :
-                     bet.status === 'lost' ? `-R$${bet.stake.toFixed(0)}` : '—'}
-                  </div>
-                </div>
-              ))}
+                  ))}
+                </>
+              )}
             </div>
           </div>
 
           {/* Right sidebar */}
-          <div className="page-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="banca-side-col">
 
-            {/* Alerts */}
-            {alerts.length > 0 && (
-              <div className="card" style={{ overflow: 'hidden' }}>
-                <div className="card-head">
-                  <div className="card-title">Alertas</div>
-                  <span style={{ fontSize: 10, color: 'var(--amber)', fontWeight: 700 }}>{alerts.length}</span>
+            {/* Banca summary */}
+            <div className="sp-block">
+              <div className="sp-title">Resumo da Banca</div>
+              <div className="banca-total">R${currentBalance.toFixed(0)}</div>
+              <div className="banca-change">
+                {profit >= 0 ? '↑' : '↓'} {profit >= 0 ? '+' : ''}R${Math.abs(profit).toFixed(0)} · {roiValue >= 0 ? '+' : ''}{roiValue.toFixed(1)}%
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+              </div>
+              {[
+                { label: 'Banca inicial',   value: `R$${initialBankroll.toFixed(0)}`,                                                    color: undefined },
+                { label: 'Lucro líquido',   value: `${profit >= 0 ? '+' : ''}R$${profit.toFixed(0)}`,                                    color: profit >= 0 ? 'var(--green)' : 'var(--red)' },
+                { label: 'Apostas abertas', value: `${pending.length} · R$${pending.reduce((s, b) => s + b.stake, 0).toFixed(0)}`,        color: undefined },
+                { label: 'Disponível',      value: `R$${(currentBalance - pending.reduce((s, b) => s + b.stake, 0)).toFixed(0)}`,         color: 'var(--lime)' },
+              ].map(row => (
+                <div key={row.label} className="banca-stat-row">
+                  <div className="bsl">{row.label}</div>
+                  <div className="bsv" style={row.color ? { color: row.color } : {}}>{row.value}</div>
                 </div>
-                {alerts.map((alert, i) => (
-                  <div key={i} style={{ padding: '10px 14px', fontSize: 12, lineHeight: 1.5,
-                    color: alert.severity === 'critical' ? 'var(--red)' : 'var(--amber)',
-                    borderBottom: i < alerts.length - 1 ? '1px solid var(--border)' : 'none',
-                    borderLeft: `3px solid ${alert.severity === 'critical' ? 'var(--red)' : 'var(--amber)'}` }}>
-                    {alert.severity === 'critical' ? '🚨' : '⚠️'} {alert.message}
-                  </div>
-                ))}
+              ))}
+            </div>
+
+            {/* Kelly calculator */}
+            <div className="sp-block">
+              <div className="sp-title">Calculadora Kelly</div>
+              <div className="kelly-card">
+                <div className="kc-row">
+                  <div className="kc-label">Odd</div>
+                  <input className="kc-input" type="number" step="0.05" min="1.01"
+                    value={kellyOdd} onChange={e => setKellyOdd(e.target.value)} />
+                </div>
+                <div className="kc-row">
+                  <div className="kc-label">Prob. (%)</div>
+                  <input className="kc-input" type="number" step="1" min="1" max="99"
+                    value={kellyProb} onChange={e => setKellyProb(e.target.value)} />
+                </div>
+                <div className="kc-row">
+                  <div className="kc-label">Banca (R$)</div>
+                  <input className="kc-input" type="number" value={Math.round(currentBalance)} readOnly
+                    style={{ opacity: 0.6, cursor: 'default' }} />
+                </div>
+                <div className="kc-result">
+                  <div><div className="kc-res-label">Aposta recomendada</div></div>
+                  <div><div className="kc-res-val">R${kellyResult}</div></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sport distribution */}
+            {bets.length > 0 && (
+              <div className="sp-block">
+                <div className="sp-title">Distribuição por esporte</div>
+                {[
+                  { label: 'Futebol',  sport: 'football',   color: '#4ade80' },
+                  { label: 'Basquete', sport: 'basketball', color: '#a78bfa' },
+                  { label: 'Tênis',    sport: 'tennis',     color: '#fcd34d' },
+                  { label: 'MMA',      sport: 'mma',        color: '#f87171' },
+                ].map(row => {
+                  const cnt = bets.filter(b => b.sport === row.sport).length;
+                  const pct = bets.length > 0 ? (cnt / bets.length) * 100 : 0;
+                  return cnt > 0 ? (
+                    <div key={row.sport} className="sp-dist-row">
+                      <div className="sp-dist-label">{row.label}</div>
+                      <div className="sp-dist-bar">
+                        <div className="sp-dist-fill" style={{ width: `${pct}%`, background: row.color }} />
+                      </div>
+                      <div className="sp-dist-val">{cnt}</div>
+                    </div>
+                  ) : null;
+                })}
               </div>
             )}
 
-            {/* Performance */}
-            <div className="card" style={{ overflow: 'hidden' }}>
-              <div className="card-head"><div className="card-title">Performance</div></div>
-              {[
-                { label: 'Odd Média',     value: avgOdd > 0 ? avgOdd.toFixed(2) : '—',                           color: 'var(--text)' },
-                { label: 'Vitórias',      value: `${won}`,                                                        color: 'var(--green)' },
-                { label: 'Derrotas',      value: `${lost}`,                                                       color: 'var(--red)' },
-                { label: 'Melhor aposta', value: bestBet && bestBet.p > 0 ? `+R$${bestBet.p.toFixed(0)}` : '—',  color: 'var(--lime)' },
-                { label: 'Lucro total',   value: `${profit >= 0 ? '+' : ''}R$${profit.toFixed(0)}`,               color: profit >= 0 ? 'var(--green)' : 'var(--red)' },
-              ].map((row, i, arr) => (
-                <div key={row.label} style={{ display: 'flex', alignItems: 'center',
-                  justifyContent: 'space-between', padding: '9px 14px',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{row.label}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: row.color, fontFamily: 'var(--font-cond)' }}>{row.value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Kelly guide */}
-            <div className="card" style={{ padding: '14px 16px' }}>
-              <div className="card-title" style={{ marginBottom: 10 }}>Stake Sugerido</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 10 }}>
-                Perfil <span style={{ color: 'var(--lime)', fontWeight: 700 }}>Moderado</span> · Half-Kelly cap 3%
-              </div>
-              {[
-                { label: 'EV 5%',  value: `R$${(currentBalance * 0.01).toFixed(0)}` },
-                { label: 'EV 10%', value: `R$${(currentBalance * 0.02).toFixed(0)}` },
-                { label: 'EV 15%', value: `R$${(currentBalance * 0.03).toFixed(0)}` },
-              ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{row.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--lime)', fontFamily: 'var(--font-cond)' }}>
-                    {row.value}
-                  </span>
-                </div>
-              ))}
-              <Link href={`/${locale}/banca/insights`}
-                style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 11,
-                  color: 'var(--lime)', fontWeight: 700, textDecoration: 'none' }}>
-                Ver Insights →
+            {/* Config link */}
+            <div className="sp-block" style={{ borderBottom: 'none' }}>
+              <Link href={`/${locale}/configuracoes`}
+                style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none', fontWeight: 600 }}>
+                ⚙ Configurar banca →
               </Link>
             </div>
-
           </div>
         </div>
       </div>

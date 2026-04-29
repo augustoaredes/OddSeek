@@ -6,6 +6,22 @@ export { buildEquityCurve, INITIAL_BANKROLL, toSettledBet };
 
 const BETS_KEY    = 'oddseek:banca:bets';
 const INITIAL_KEY = 'oddseek:banca:initial';
+const PROFILE_KEY = 'oddseek:banca:risk_profile';
+
+export type RiskProfile = 'conservador' | 'moderado' | 'agressivo';
+
+export function loadRiskProfile(): RiskProfile {
+  if (typeof window === 'undefined') return 'moderado';
+  const raw = localStorage.getItem(PROFILE_KEY) as RiskProfile | null;
+  if (raw && ['conservador', 'moderado', 'agressivo'].includes(raw)) return raw;
+  return 'moderado';
+}
+
+export function saveRiskProfile(profile: RiskProfile): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(PROFILE_KEY, profile);
+  }
+}
 
 let _idCounter = Date.now();
 export function newBetId(): string {
