@@ -126,14 +126,15 @@ export default async function TipsPage({ searchParams }: Props) {
         </div>
       </div>
 
-      {/* Card grid */}
+      {/* Card scroll */}
       <div className="page-scroll">
-        <div className="tips-grid" style={{ padding: '16px 20px' }}>
-          {tips.length === 0 ? (
-            <div style={{ gridColumn: '1/-1', padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              Nenhuma tip encontrada para este filtro.
-            </div>
-          ) : tips.map((tip, i) => {
+        {tips.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+            Nenhuma tip encontrada para este filtro.
+          </div>
+        ) : (
+        <div className="cards-scroll-row">
+          {tips.map((tip, i) => {
             const isElite = tip.ev >= 0.10;
             const isLive  = i < 2;
             const radius  = 12;
@@ -225,6 +226,7 @@ export default async function TipsPage({ searchParams }: Props) {
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

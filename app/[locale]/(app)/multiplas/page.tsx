@@ -75,21 +75,21 @@ export default async function MultiplasPage({ searchParams }: Props) {
       {/* ── Tab content ──────────────────────────────────── */}
       {activeTab === 'sugeridas' ? (
 
-        <div className="page-grid" style={{ '--pg-cols': '1fr 264px', gap: 14 } as React.CSSProperties}>
-          {/* Parlays grid */}
-          <div>
-            {parlays.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text)', fontSize: 14 }}>
-                Nenhuma múltipla disponível no momento.
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-                {parlays.map(parlay => (
-                  <ParlayCard key={parlay.id} parlay={parlay} />
-                ))}
-              </div>
-            )}
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Parlays scroll */}
+          {parlays.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text)', fontSize: 14 }}>
+              Nenhuma múltipla disponível no momento.
+            </div>
+          ) : (
+            <div className="cards-scroll-row">
+              {parlays.map(parlay => (
+                <div key={parlay.id} className="parlay-card-wrap">
+                  <ParlayCard parlay={parlay} />
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Sidebar */}
           <div className="page-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

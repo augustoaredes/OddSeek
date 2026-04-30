@@ -1615,6 +1615,26 @@ button {
   gap: 12px; padding: 16px 0;
 }
 
+/* Scroll horizontal de cards (Tips e Múltiplas) */
+.cards-scroll-row {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 16px 20px 20px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Deixa o scroll começar alinhado ao padding da tela */
+  scroll-padding-left: 20px;
+}
+.cards-scroll-row::-webkit-scrollbar { display: none; }
+.cards-scroll-row .tip-card,
+.cards-scroll-row .parlay-card-wrap {
+  flex-shrink: 0;
+  width: 300px;
+  scroll-snap-align: start;
+}
+
 .tip-card {
   background: var(--s); border: 1px solid var(--border);
   border-radius: 10px; overflow: hidden; cursor: pointer;

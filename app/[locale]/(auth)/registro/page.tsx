@@ -11,27 +11,34 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 interface Props {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ email?: string; plano?: string }>;
 }
 
-export default async function RegisterPage({ params }: Props) {
+export default async function RegisterPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const t = await getTranslations('auth');
+  const { email: defaultEmail = '', plano: defaultPlan = 'pro' } = await searchParams;
 
   return (
-    <div className="card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div>
-        <h1 style={{ fontFamily: 'var(--font-cond)', fontSize: 28, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 6 }}>
-          {t('register_title')}
+    <div className="card" style={{ padding: '28px 28px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{
+          fontFamily: 'var(--font-cond)', fontSize: 26, fontWeight: 900,
+          textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: 6,
+        }}>
+          Criar conta grátis
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--muted)' }}>{t('register_sub')}</p>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
+          14 dias com acesso completo · sem cartão agora
+        </p>
       </div>
 
-      <RegisterForm locale={locale} />
+      <RegisterForm locale={locale} defaultEmail={defaultEmail} defaultPlan={defaultPlan} />
 
-      <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
-        {t('have_account')}{' '}
+      <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', margin: 0 }}>
+        Já tem conta?{' '}
         <Link href={`/${locale}/login`} style={{ color: 'var(--lime)', fontWeight: 600 }}>
-          {t('login_link')}
+          Entrar
         </Link>
       </p>
     </div>
