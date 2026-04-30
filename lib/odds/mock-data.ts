@@ -59,16 +59,18 @@ export const MOCK_EVENTS: OddsEvent[] = [
         market: 'match_winner',
         label: 'Resultado Final',
         selections: [
-          buildSelection('Real Madrid', [2.10, 2.15, 2.08, 2.20, 2.18]),
-          buildSelection('Empate',      [3.40, 3.35, 3.45, 3.38, 3.42]),
-          buildSelection('PSG',         [3.20, 3.25, 3.18, 3.30, 3.22]),
+          // Stake outlier: 2.38 vs consensus ~2.00 → EV +14%
+          buildSelection('Real Madrid', [1.98, 2.00, 1.96, 2.38, 2.02]),
+          buildSelection('Empate',      [3.40, 3.35, 3.42, 3.38, 3.44]),
+          buildSelection('PSG',         [3.15, 3.20, 3.12, 3.10, 3.18]),
         ],
       },
       {
         market: 'over_under',
         label: 'Total de Gols',
         selections: [
-          buildSelection('Mais de 2.5', [1.82, 1.85, 1.80, 1.88, 1.84]),
+          // Stake outlier: 1.95 → EV +6%
+          buildSelection('Mais de 2.5', [1.80, 1.83, 1.78, 1.95, 1.82]),
           buildSelection('Menos de 2.5',[2.05, 2.00, 2.08, 2.02, 2.06]),
         ],
       },
@@ -87,7 +89,8 @@ export const MOCK_EVENTS: OddsEvent[] = [
         market: 'match_winner',
         label: 'Resultado Final',
         selections: [
-          buildSelection('Flamengo',  [2.30, 2.25, 2.35, 2.28, 2.32]),
+          // Pinnacle outlier: 2.55 → EV +12%
+          buildSelection('Flamengo',  [2.18, 2.20, 2.15, 2.22, 2.55]),
           buildSelection('Empate',    [3.10, 3.15, 3.08, 3.12, 3.10]),
           buildSelection('Palmeiras', [2.90, 2.95, 2.88, 2.92, 2.96]),
         ],
@@ -96,7 +99,8 @@ export const MOCK_EVENTS: OddsEvent[] = [
         market: 'btts',
         label: 'Ambas Marcam',
         selections: [
-          buildSelection('Sim', [1.72, 1.75, 1.70, 1.78, 1.74]),
+          // Stake outlier: 1.90 → EV +8%
+          buildSelection('Sim', [1.68, 1.70, 1.67, 1.90, 1.69]),
           buildSelection('Não', [2.10, 2.05, 2.12, 2.08, 2.06]),
         ],
       },
@@ -115,7 +119,8 @@ export const MOCK_EVENTS: OddsEvent[] = [
         market: 'match_winner',
         label: 'Resultado Final',
         selections: [
-          buildSelection('Man City', [1.85, 1.88, 1.82, 1.90, 1.86]),
+          // Stake outlier: 2.10 → EV +12%
+          buildSelection('Man City', [1.82, 1.85, 1.80, 2.10, 1.83]),
           buildSelection('Empate',   [3.60, 3.55, 3.65, 3.58, 3.62]),
           buildSelection('Arsenal',  [4.20, 4.15, 4.25, 4.18, 4.22]),
         ],
@@ -144,7 +149,8 @@ export const MOCK_EVENTS: OddsEvent[] = [
         market: 'match_winner',
         label: 'Vencedor',
         selections: [
-          buildSelection('Lakers',  [1.95, 1.98, 1.92, 2.00, 1.96]),
+          // Stake outlier: 2.15 → EV +10%
+          buildSelection('Lakers',  [1.90, 1.92, 1.88, 2.15, 1.91]),
           buildSelection('Celtics', [1.92, 1.90, 1.94, 1.88, 1.92]),
         ],
       },
@@ -173,7 +179,8 @@ export const MOCK_EVENTS: OddsEvent[] = [
         label: 'Vencedor do Jogo',
         selections: [
           buildSelection('Djokovic', [2.05, 2.08, 2.02, 2.10, 2.06]),
-          buildSelection('Alcaraz',  [1.82, 1.80, 1.84, 1.78, 1.82]),
+          // Stake outlier: 1.98 → EV +8%
+          buildSelection('Alcaraz',  [1.78, 1.80, 1.76, 1.98, 1.79]),
         ],
       },
     ],
@@ -192,7 +199,8 @@ export const MOCK_EVENTS: OddsEvent[] = [
         market: 'match_winner',
         label: 'Vencedor',
         selections: [
-          buildSelection('Jones',  [1.55, 1.57, 1.53, 1.60, 1.56]),
+          // Stake outlier: 1.75 → EV +12%
+          buildSelection('Jones',  [1.52, 1.55, 1.50, 1.75, 1.53]),
           buildSelection('Miocic', [2.50, 2.45, 2.55, 2.48, 2.52]),
         ],
       },

@@ -1,17 +1,13 @@
-'use client';
-
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { useLocale, useTranslations } from 'next-intl';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { auth } from '@/lib/auth';
+import { OddSeekMark } from '@/components/brand/OddSeekMark';
 
-const OddSeekMark = dynamic(
-  () => import('@/components/brand/OddSeekMark').then((m) => ({ default: m.OddSeekMark })),
-  { ssr: false }
-);
-
-export function MarketingNav() {
-  const t = useTranslations('nav');
-  const locale = useLocale();
+export async function MarketingNav() {
+  const locale = await getLocale();
+  const t = await getTranslations('nav');
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
 
   return (
     <nav
@@ -57,12 +53,20 @@ export function MarketingNav() {
           {locale === 'pt-BR' ? 'EN' : 'PT'}
         </Link>
 
-        <Link href={`/${locale}/login`} className="btn btn-ghost">
-          {t('login')}
-        </Link>
-        <Link href={`/${locale}/registro`} className="btn btn-lime">
-          {t('signup')}
-        </Link>
+        {isLoggedIn ? (
+          <Link href={`/${locale}/dashboard`} className="btn btn-lime">
+            Dashboard →
+          </Link>
+        ) : (
+          <>
+            <Link href={`/${locale}/login`} className="btn btn-ghost">
+              {t('login')}
+            </Link>
+            <Link href={`/${locale}/registro`} className="btn btn-lime">
+              {t('signup')}
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );

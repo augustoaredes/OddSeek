@@ -289,7 +289,20 @@ export default async function DashboardPage({
                   </div>
                   <div className="conf-best">
                     <div className="conf-odd">{bestTip.odd.toFixed(2)}</div>
-                    <div className="conf-where">{bestTip.book}</div>
+                    {(() => {
+                      const bs = BOOK_COLORS[bestTip.book] ?? { bg: '#3A3D45', text: '#fff' };
+                      return (
+                        <span style={{
+                          display: 'inline-block', marginTop: 4,
+                          fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+                          padding: '3px 8px', borderRadius: 4,
+                          background: bs.bg, color: bs.text,
+                          textTransform: 'uppercase',
+                        }}>
+                          {bestTip.book}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
