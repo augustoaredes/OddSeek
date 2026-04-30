@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { DottedSurface } from '@/components/ui/dotted-surface';
 
 interface Props { locale: string }
 
@@ -24,6 +25,16 @@ export async function Hero({ locale }: Props) {
 
   return (
     <section className="hero-v2">
+      {/* Animated dotted grid background — Three.js, lime palette */}
+      <DottedSurface />
+      {/* Lime radial glow at top-center to blend dots with content */}
+      <div style={{
+        pointerEvents: 'none',
+        position: 'absolute',
+        inset: 0,
+        background: 'radial-gradient(ellipse 70% 45% at 50% 0%, oklch(80% 0.3 115 / 0.10) 0%, transparent 70%)',
+        zIndex: 0,
+      }} />
       <div className="field-bg" />
 
       <div className="hero-v2-inner">
