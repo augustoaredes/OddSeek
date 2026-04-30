@@ -10,8 +10,11 @@ interface Props {
   locale: string;
 }
 
-function calcEV(prob: number, odd: number) {
-  return prob * odd - 1;
+function calcEV(prob: number, odd: number): number {
+  const safeProp = Math.max(0, Math.min(1, prob || 0));
+  const safeOdd  = Math.max(1.01, Math.min(1000, odd || 1.01));
+  const raw = safeProp * safeOdd - 1;
+  return isFinite(raw) && Math.abs(raw) <= 9.99 ? raw : -1;
 }
 
 export function ParlayBuilderClient({ tips }: Props) {

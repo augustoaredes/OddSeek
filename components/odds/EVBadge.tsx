@@ -28,11 +28,12 @@ const BG: Record<RiskBand, string> = {
 };
 
 export function EVBadge({ ev, showNegative = false }: EVBadgeProps) {
-  const band = classifyEV(ev);
+  const safe = !isFinite(ev) || isNaN(ev) || Math.abs(ev) > 9.99 ? 0 : ev;
+  const band = classifyEV(safe);
   if (band === 'negative' && !showNegative) return null;
 
-  const sign = ev > 0 ? '+' : '';
-  const label = `${sign}${(ev * 100).toFixed(1)}%`;
+  const sign = safe > 0 ? '+' : '';
+  const label = `${sign}${(safe * 100).toFixed(1)}%`;
 
   return (
     <span

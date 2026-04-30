@@ -5,6 +5,7 @@ import { getSuggestedParlaysAsync } from '@/lib/tips/parlay-suggestions';
 import { getTips } from '@/lib/tips/fetcher';
 import { ParlayCard } from '@/components/parlays/ParlayCard';
 import { ParlayBuilderClient } from '@/components/parlays/ParlayBuilderClient';
+import { sanitizeEV } from '@/lib/analytics/ev';
 
 interface Props {
   searchParams: Promise<{ tab?: string }>;
@@ -18,9 +19,9 @@ export default async function MultiplasPage({ searchParams }: Props) {
   const parlays = await getSuggestedParlaysAsync();
   const tips    = activeTab === 'construir' ? await getTips() : [];
 
-  const positiveEV = parlays.filter(p => p.analysis.ev > 0);
-  const avgEV      = positiveEV.length > 0 ? positiveEV.reduce((s, p) => s + p.analysis.ev, 0) / positiveEV.length : 0;
-  const bestParlay = parlays.length > 0 ? parlays.reduce((a, p) => p.analysis.ev > a.analysis.ev ? p : a, parlays[0]) : null;
+  const positiveEV = parlays.filter(p => sanitizeEV(p.analysis.ev) > 0);
+  const avgEV      = positiveEV.length > 0 ? positiveEV.reduce((s, p) => s + sanitizeEV(p.analysis.ev), 0) / positiveEV.length : 0;
+  const bestParlay = parlays.length > 0 ? parlays.reduce((a, p) => sanitizeEV(p.analysis.ev) > sanitizeEV(a.analysis.ev) ? p : a, parlays[0]) : null;
   const avgOdd     = parlays.length > 0 ? parlays.reduce((s, p) => s + p.analysis.parlayOdd, 0) / parlays.length : 0;
 
   return (
@@ -96,7 +97,7 @@ export default async function MultiplasPage({ searchParams }: Props) {
               <div className="card" style={{ boxShadow: '0 0 0 1px oklch(80% 0.3 115 / 0.2), 0 8px 24px oklch(80% 0.3 115 / 0.08)' }}>
                 <div className="card-head">
                   <div className="card-title">Melhor Múltipla</div>
-                  <span className="ev-badge lime">+{(bestParlay.analysis.ev * 100).toFixed(1)}%</span>
+                  <span className="ev-badge lime">+{(sanitizeEV(bestParlay.analysis.ev) * 100).toFixed(1)}%</span>
                 </div>
                 <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {bestParlay.legs.map(({ tip }, i) => (

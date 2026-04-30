@@ -46,11 +46,11 @@ export default async function ComunidadePage() {
                     {post.author.verified && (
                       <span style={{ fontSize: 10, color: 'var(--lime)', fontWeight: 800 }}>✓</span>
                     )}
-                    <Link href={`/${locale}/perfil/${post.author.handle}`} style={{ fontSize: 11, color: 'var(--dim)', textDecoration: 'none' }}>
+                    <Link href={`/${locale}/perfil/${post.author.handle}`} style={{ fontSize: 11, color: 'var(--muted)', textDecoration: 'none' }}>
                       @{post.author.handle}
                     </Link>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--dim)' }}>{timeAgo(post.createdAt)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>{timeAgo(post.createdAt)}</div>
                 </div>
               </div>
 
@@ -98,7 +98,7 @@ export default async function ComunidadePage() {
             </div>
             {top3.map(entry => (
               <div key={entry.user.handle} style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 16, fontWeight: 900, fontFamily: 'var(--font-cond)', color: 'var(--dim)', width: 20, textAlign: 'center' }}>{entry.rank}</span>
+                <span style={{ fontSize: 16, fontWeight: 900, fontFamily: 'var(--font-cond)', color: 'var(--muted)', width: 20, textAlign: 'center' }}>{entry.rank}</span>
                 <Avatar initials={entry.user.avatar} size={30} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.user.name}</div>

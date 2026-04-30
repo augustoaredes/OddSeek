@@ -41,15 +41,24 @@ export function analyzeParlayy(legs: ParlayLeg[]): ParlayAnalysis {
     return { combinedProbability: 0, parlayOdd: 1, ev: -1, riskLevel: 'blocked', sameEventConflict: false };
   }
 
-  const sameEventConflict = hasSameEventConflict(legs);
-  const prob = combinedProbability(legs);
-  const odd = parlayOdd(legs);
-  const ev = calculateEV(prob, odd);
+  // Clamp inputs to valid ranges before computing
+  const safelegs = legs.map(l => ({
+    ...l,
+    probability: Math.max(0, Math.min(1, l.probability || 0)),
+    odd: Math.max(1.01, Math.min(1000, l.odd || 1.01)),
+  }));
+
+  const sameEventConflict = hasSameEventConflict(safelegs);
+  const prob = combinedProbability(safelegs);
+  const odd = parlayOdd(safelegs);
+  const rawEv = calculateEV(prob, odd);
+  // Guard against corrupted probability/odd data producing invalid EV
+  const ev = isFinite(rawEv) && Math.abs(rawEv) <= 9.99 ? rawEv : -1;
 
   let riskLevel: RiskLevel;
   if (sameEventConflict || prob < 0.15 || ev < 0) {
     riskLevel = 'blocked';
-  } else if (legs.length <= 2 && prob >= 0.40) {
+  } else if (safelegs.length <= 2 && prob >= 0.40) {
     riskLevel = 'low';
   } else {
     riskLevel = 'medium';

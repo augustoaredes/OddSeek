@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getLocale } from 'next-intl/server';
 import { getTips } from '@/lib/tips/fetcher';
 import { formatTimeBRT } from '@/lib/utils/date';
+import { sanitizeEV } from '@/lib/analytics/ev';
 
 const SPORT_DOTS: Record<string, string> = {
   football:   '#4ade80',
@@ -18,8 +19,9 @@ const SPORT_LABELS: Record<string, string> = {
 };
 
 function evClass(ev: number): string {
-  if (ev >= 0.10) return 'hi';
-  if (ev >= 0.02) return 'pos';
+  const safe = sanitizeEV(ev);
+  if (safe >= 0.10) return 'hi';
+  if (safe >= 0.02) return 'pos';
   return 'low';
 }
 
@@ -176,7 +178,7 @@ export default async function TipsPage({ searchParams }: Props) {
                 {/* Footer */}
                 <div className="tc-foot">
                   <div className={`tc-ev-pill ${evClass(tip.ev)}`}>
-                    EV {tip.ev >= 0 ? '+' : ''}{(tip.ev * 100).toFixed(1)}%
+                    EV {sanitizeEV(tip.ev) >= 0 ? '+' : ''}{(sanitizeEV(tip.ev) * 100).toFixed(1)}%
                   </div>
                   <div className="tc-conf">
                     <div className="tc-conf-ring">

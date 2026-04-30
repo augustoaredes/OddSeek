@@ -1,12 +1,14 @@
 /**
  * OddsPapi adapter — https://oddspapi.io
  *
- * Auth: ?apiKey=KEY  (query param)
- * Base: https://api.oddspapi.io/v4
+ * Real API structure (confirmed via exploration):
+ *   GET /sports                                            → sportId list
+ *   GET /tournaments?sportId=10                            → tournament list per sport
+ *   GET /fixtures?tournamentId=325                         → fixture list with team names
+ *   GET /odds-by-tournaments?tournamentIds=325&bookmaker=bet365 → odds per bookmaker (ONE at a time)
  *
- * Flow:
- *   1. GET /tournaments  → list of available sport tournaments
- *   2. GET /odds-by-tournaments?tournamentIds=ID1,ID2  → odds per fixture
+ * Strategy: fetch fixtures (with names), then fetch odds per bookmaker in parallel,
+ * merge by fixtureId, convert to OddsEvent[].
  */
 
 import { consensusProbability } from '@/lib/analytics/probability';
@@ -15,53 +17,39 @@ import type { OddsEvent, OddsMarket, OddsSelection, BookOdd, Sport, Market } fro
 
 const API_BASE = 'https://api.oddspapi.io/v4';
 
-// Only these 6 bookmakers are shown in the app
-const ALLOWED_BOOKS = ['Bet365', 'Betano', 'Sportingbet', 'Pixbet', 'Superbet', 'Esportes da Sorte'];
-
-// Affiliate URLs per bookmaker
-const AFFILIATE_URLS: Record<string, string> = {
-  'Bet365':            'https://www.bet365.com/?affid=oddseek_bet365',
-  'Betano':            'https://www.betano.com.br/?affid=oddseek_betano',
-  'Sportingbet':       'https://www.sportingbet.com.br/?affid=oddseek_sportingbet',
-  'Pixbet':            'https://pixbet.com/?affid=oddseek_pixbet',
-  'Superbet':          'https://superbet.com.br/?affid=oddseek_superbet',
-  'Esportes da Sorte': 'https://www.esportesdasorte.com.br/?affid=oddseek_edssorte',
-};
-
-// Tournament IDs to query (Brazilian + main international leagues)
-// Run GET /tournaments once to discover IDs for your account
+// Active tournaments (confirmed via /tournaments discovery, April 2026)
 const TARGET_TOURNAMENT_IDS = [
-  '1',   // Brasileirão Série A (adjust IDs after consulting /tournaments)
-  '2',   // Champions League
-  '3',   // Premier League
-  '4',   // La Liga
-  '5',   // NBA
-  '6',   // UFC / MMA
+  '325',  // Brasileiro Serie A
+  '7',    // UEFA Champions League
+  '390',  // Brasileiro Serie B
+  '373',  // Copa do Brasil
+  '384',  // Copa Libertadores
 ];
 
-// Map OddsPapi sport names to internal Sport type
-const SPORT_MAP: Record<string, Sport> = {
-  soccer:     'football',
-  football:   'football',
-  basketball: 'basketball',
-  tennis:     'tennis',
-  mma:        'mma',
-  volleyball: 'football', // fallback
+// Bookmakers available in OddsPapi with Brazilian coverage (confirmed via API exploration)
+// slug → display name
+const BOOKMAKER_SLUGS: Record<string, string> = {
+  'bet365':           'Bet365',
+  'betano':           'Betano',
+  'sportingbet':      'Sportingbet',
+  'pixbet':           'Pixbet',
+  'superbet':         'Superbet',
 };
 
-// Map OddsPapi market names to internal Market type
-const MARKET_MAP: Record<string, Market> = {
-  'match_winner': 'match_winner',
-  '1x2':         'match_winner',
-  'h2h':         'match_winner',
-  'moneyline':   'match_winner',
-  'totals':      'over_under',
-  'over_under':  'over_under',
-  'total':       'over_under',
-  'spreads':     'handicap',
-  'handicap':    'handicap',
-  'btts':        'btts',
-  'both_teams_to_score': 'btts',
+const AFFILIATE_URLS: Record<string, string> = {
+  'Bet365':      'https://www.bet365.com/?affid=oddseek_bet365',
+  'Betano':      'https://www.betano.com.br/?affid=oddseek_betano',
+  'Sportingbet': 'https://www.sportingbet.com.br/?affid=oddseek_sportingbet',
+  'Pixbet':      'https://pixbet.com/?affid=oddseek_pixbet',
+  'Superbet':    'https://superbet.com.br/?affid=oddseek_superbet',
+};
+
+// sportId (from API) → internal Sport
+const SPORT_ID_MAP: Record<number, Sport> = {
+  10: 'football',
+  11: 'basketball',
+  12: 'tennis',
+  20: 'mma',
 };
 
 const MARKET_LABELS: Record<Market, string> = {
@@ -72,186 +60,287 @@ const MARKET_LABELS: Record<Market, string> = {
   double_chance: 'Dupla Hipótese',
 };
 
-// ── Raw API types ─────────────────────────────────────────────────────────────
+// OddsPapi market IDs → internal Market type
+// Market 101 = Full Time Result (1x2), 104 = BTTS, 106+ = Over/Under totals
+const MARKET_ID_MAP: Record<number, Market> = {
+  101: 'match_winner',
+  104: 'btts',
+  106: 'over_under',
+  108: 'over_under',
+  110: 'over_under',
+  112: 'over_under',
+  114: 'over_under',
+};
 
-interface ApiOddsOutcome {
-  name: string;
-  odds: number;      // decimal format
-  point?: number;    // for totals/handicap
+// Outcome IDs for market 101 (1x2)
+const OUTCOME_LABELS: Record<number, string> = {
+  101: '1 (Casa)',
+  102: 'X (Empate)',
+  103: '2 (Fora)',
+  104: 'Sim',  // BTTS yes
+  105: 'Não',  // BTTS no
+  106: 'Mais de',
+  107: 'Menos de',
+  108: 'Mais de',
+  109: 'Menos de',
+  110: 'Mais de',
+  111: 'Menos de',
+  112: 'Mais de',
+  113: 'Menos de',
+  114: 'Mais de',
+  115: 'Menos de',
+};
+
+// ── Raw API types ──────────────────────────────────────────────────────────────
+
+interface ApiFixture {
+  fixtureId: string;
+  participant1Id: number;
+  participant2Id: number;
+  participant1Name?: string;
+  participant1ShortName?: string;
+  participant2Name?: string;
+  participant2ShortName?: string;
+  sportId: number;
+  tournamentId: number;
+  tournamentName?: string;
+  startTime: string;
+  statusId: number;  // 0=scheduled, 1=live, 2=finished, etc.
 }
 
-interface ApiOddsBookmaker {
-  name: string;
-  markets: {
-    name: string;
-    outcomes: ApiOddsOutcome[];
-  }[];
+interface ApiOddsPlayer {
+  price: number;
+  active: boolean;
+  mainLine?: boolean;
+}
+
+interface ApiOddsOutcomeEntry {
+  players: Record<string, ApiOddsPlayer>;
+}
+
+interface ApiOddsMarket {
+  marketActive: boolean;
+  outcomes: Record<string, ApiOddsOutcomeEntry>;
+}
+
+interface ApiBookmakerData {
+  bookmakerIsActive: boolean;
+  suspended: boolean;
+  markets: Record<string, ApiOddsMarket>;
 }
 
 interface ApiOddsFixture {
-  id: string;
-  tournament_id: string;
-  tournament_name: string;
-  sport: string;
-  home_team: string;
-  away_team: string;
-  start_time: string;   // ISO
-  status: string;       // "scheduled" | "live" | "finished"
-  elapsed?: number;
-  bookmakers: ApiOddsBookmaker[];
+  fixtureId: string;
+  participant1Id: number;
+  participant2Id: number;
+  sportId: number;
+  tournamentId: number;
+  startTime: string;
+  statusId: number;
+  bookmakerOdds: Record<string, ApiBookmakerData>;
 }
 
-// ── Conversion helpers ────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-function filterBooks(bookmakers: ApiOddsBookmaker[]): ApiOddsBookmaker[] {
-  const filtered = bookmakers.filter(b => ALLOWED_BOOKS.includes(b.name));
-  // Sort by ALLOWED_BOOKS order
-  return filtered.sort((a, b) => ALLOWED_BOOKS.indexOf(a.name) - ALLOWED_BOOKS.indexOf(b.name));
+function statusFromId(id: number): 'scheduled' | 'live' | 'finished' {
+  if (id === 0) return 'scheduled';
+  if (id >= 1 && id <= 9) return 'live';
+  return 'finished';
 }
 
-function buildMarket(
-  marketName: string,
-  bookmakers: ApiOddsBookmaker[],
+function getPrice(entry: ApiOddsOutcomeEntry): number {
+  const players = Object.values(entry.players ?? {});
+  const main = players.find(p => p.mainLine) ?? players[0];
+  return main?.active ? main.price : 0;
+}
+
+// ── Build OddsMarket from per-bookmaker odds ───────────────────────────────────
+
+interface BookmakerMarketOdds {
+  bookName: string;
+  // outcome ID → price
+  outcomes: Record<number, number>;
+}
+
+function buildMarketFromId(
+  marketId: number,
+  outcomeIds: number[],
+  bookmakerData: BookmakerMarketOdds[],
 ): OddsMarket | null {
-  const marketKey = MARKET_MAP[marketName.toLowerCase()];
+  const marketKey = MARKET_ID_MAP[marketId];
   if (!marketKey) return null;
-
-  const booksWithMarket = bookmakers
-    .map(bm => ({
-      name: bm.name,
-      mkt: bm.markets.find(m => MARKET_MAP[m.name.toLowerCase()] === marketKey),
-    }))
-    .filter(x => x.mkt && x.mkt.outcomes.length >= 2);
-
-  if (booksWithMarket.length < 1) return null;
-
-  const canonical = booksWithMarket[0].mkt!.outcomes;
-  const outcomeCount = canonical.length;
+  if (outcomeIds.length < 2) return null;
 
   // Build odds matrix [bookmakers × outcomes]
-  const oddsMatrix: number[][] = booksWithMarket
-    .map(({ mkt }) =>
-      canonical.map(ref => {
-        const match = mkt!.outcomes.find(o => o.name === ref.name);
-        return match?.odds ?? 0;
-      })
-    )
-    .filter(row => row.every(o => o > 1));
+  const validBooks = bookmakerData.filter(b =>
+    outcomeIds.every(id => (b.outcomes[id] ?? 0) > 1)
+  );
+  if (validBooks.length < 1) return null;
 
-  if (oddsMatrix.length === 0) return null;
+  const oddsMatrix = validBooks.map(b => outcomeIds.map(id => b.outcomes[id] ?? 0));
 
-  const selections: OddsSelection[] = Array.from({ length: outcomeCount }, (_, idx) => {
-    const outcome = canonical[idx];
-    const label = outcome.name === 'Draw' ? 'Empate'
-      : outcome.name === 'Over' ? `Mais de ${outcome.point ?? ''}`
-      : outcome.name === 'Under' ? `Menos de ${outcome.point ?? ''}`
-      : outcome.name;
-
+  const selections: OddsSelection[] = outcomeIds.map((outcomeId, idx) => {
+    const label = OUTCOME_LABELS[outcomeId] ?? `Outcome ${outcomeId}`;
     const consensusProb = consensusProbability(oddsMatrix, idx);
 
     let bestOdd = 0;
     let bestBook = '';
-
-    const books: BookOdd[] = booksWithMarket
-      .map(({ name, mkt }) => {
-        const match = mkt!.outcomes.find(o => o.name === outcome.name);
-        const odd = match?.odds ?? 0;
-        if (odd > bestOdd) { bestOdd = odd; bestBook = name; }
-        return {
-          book:        name,
-          odd,
-          impliedProb: odd > 0 ? 1 / odd : 0,
-          ev:          odd > 0 ? calculateEV(consensusProb, odd) : -1,
-          isBest:      false,
-          affiliateUrl: AFFILIATE_URLS[name] ?? `https://www.${name.toLowerCase().replace(/\s+/g, '')}.com`,
-        };
-      })
-      .filter(b => b.odd > 1);
+    const books: BookOdd[] = validBooks.map(b => {
+      const odd = b.outcomes[outcomeId] ?? 0;
+      if (odd > bestOdd) { bestOdd = odd; bestBook = b.bookName; }
+      return {
+        book:        b.bookName,
+        odd,
+        impliedProb: odd > 0 ? 1 / odd : 0,
+        ev:          odd > 0 ? calculateEV(consensusProb, odd) : -1,
+        isBest:      false,
+        affiliateUrl: AFFILIATE_URLS[b.bookName] ?? '#',
+      };
+    }).filter(b => b.odd > 1);
 
     books.forEach(b => { b.isBest = b.book === bestBook; });
-
     return { label, books, consensusProb, bestOdd, bestBook };
   });
 
-  return {
-    market: marketKey,
-    label:  MARKET_LABELS[marketKey],
-    selections,
-  };
+  return { market: marketKey, label: MARKET_LABELS[marketKey], selections };
 }
 
-function convertFixture(raw: ApiOddsFixture): OddsEvent | null {
-  if (!raw.home_team || !raw.away_team) return null;
+// ── Core fetch helpers ─────────────────────────────────────────────────────────
 
-  const sport = SPORT_MAP[raw.sport?.toLowerCase()] ?? 'football';
-  const allowedBooks = filterBooks(raw.bookmakers ?? []);
-  if (allowedBooks.length === 0) return null;
+async function fetchFixtures(apiKey: string, tournamentId: string): Promise<ApiFixture[]> {
+  const url = `${API_BASE}/fixtures?apiKey=${apiKey}&tournamentId=${tournamentId}&hasOdds=true`;
+  const res = await fetch(url, { next: { revalidate: 0 } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.data ?? []);
+}
 
-  // Collect unique market names across all bookmakers
-  const marketNames = [...new Set(
-    allowedBooks.flatMap(bm => bm.markets.map(m => m.name.toLowerCase()))
-  )];
+async function fetchOddsForBookmaker(
+  apiKey: string,
+  slug: string,
+  tournamentIds: string,
+): Promise<ApiOddsFixture[]> {
+  const url = `${API_BASE}/odds-by-tournaments?apiKey=${apiKey}&tournamentIds=${tournamentIds}&bookmaker=${slug}&oddsFormat=decimal`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 0 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.data ?? []);
+  } catch {
+    return [];
+  }
+}
 
-  const markets: OddsMarket[] = marketNames
-    .map(name => buildMarket(name, allowedBooks))
-    .filter((m): m is OddsMarket => m !== null);
+// ── Convert merged data to OddsEvent ──────────────────────────────────────────
+
+function convertToOddsEvent(
+  fixture: ApiFixture,
+  oddsPerBook: Map<string, ApiOddsFixture>,
+): OddsEvent | null {
+  const home = fixture.participant1ShortName ?? fixture.participant1Name;
+  const away = fixture.participant2ShortName ?? fixture.participant2Name;
+  if (!home || !away) return null;
+
+  const sport: Sport = SPORT_ID_MAP[fixture.sportId] ?? 'football';
+
+  // Collect all market IDs across all bookmakers
+  const marketOutcomeMap = new Map<number, Set<number>>();
+  for (const [slug, oddsFixture] of oddsPerBook) {
+    const bookData = oddsFixture.bookmakerOdds[slug];
+    if (!bookData?.bookmakerIsActive || bookData.suspended) continue;
+    for (const [mktIdStr, mkt] of Object.entries(bookData.markets)) {
+      const mktId = Number(mktIdStr);
+      if (!MARKET_ID_MAP[mktId]) continue;
+      if (!mkt.marketActive) continue;
+      if (!marketOutcomeMap.has(mktId)) marketOutcomeMap.set(mktId, new Set());
+      for (const outcomeId of Object.keys(mkt.outcomes)) {
+        marketOutcomeMap.get(mktId)!.add(Number(outcomeId));
+      }
+    }
+  }
+
+  const markets: OddsMarket[] = [];
+
+  for (const [mktId, outcomeSet] of marketOutcomeMap) {
+    const outcomeIds = [...outcomeSet].sort((a, b) => a - b);
+
+    const bookmakerData: BookmakerMarketOdds[] = [];
+    for (const [slug, displayName] of Object.entries(BOOKMAKER_SLUGS)) {
+      const oddsFixture = oddsPerBook.get(slug);
+      if (!oddsFixture) continue;
+      const bookData = oddsFixture.bookmakerOdds[slug];
+      if (!bookData?.bookmakerIsActive || bookData.suspended) continue;
+      const mkt = bookData.markets[String(mktId)];
+      if (!mkt?.marketActive) continue;
+
+      const outcomes: Record<number, number> = {};
+      for (const [outcomeIdStr, entry] of Object.entries(mkt.outcomes)) {
+        outcomes[Number(outcomeIdStr)] = getPrice(entry);
+      }
+      bookmakerData.push({ bookName: displayName, outcomes });
+    }
+
+    const market = buildMarketFromId(mktId, outcomeIds, bookmakerData);
+    if (market) markets.push(market);
+  }
 
   if (markets.length === 0) return null;
 
-  const status = raw.status === 'live' ? 'live'
-    : raw.status === 'finished' ? 'finished'
-    : 'scheduled';
-
   return {
-    id:       raw.id,
+    id:       fixture.fixtureId,
     sport,
-    league:   raw.tournament_name ?? 'Desconhecido',
-    home:     raw.home_team,
-    away:     raw.away_team,
-    startsAt: raw.start_time,
-    status,
-    elapsed:  raw.elapsed,
+    league:   fixture.tournamentName ?? 'Desconhecido',
+    home,
+    away,
+    startsAt: fixture.startTime,
+    status:   statusFromId(fixture.statusId),
     markets,
   };
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-async function fetchTournaments(apiKey: string): Promise<{ id: string; name: string }[]> {
-  const res = await fetch(`${API_BASE}/tournaments?apiKey=${apiKey}`, {
-    next: { revalidate: 0 },
-  });
-  if (!res.ok) throw new Error(`ODDSPAPI /tournaments: HTTP ${res.status}`);
-  const data = await res.json();
-  // Response may be array or { data: [...] }
-  return Array.isArray(data) ? data : (data.data ?? []);
-}
+// ── Public API ─────────────────────────────────────────────────────────────────
 
 export async function fetchAllOddsOddsPapi(apiKey: string): Promise<OddsEvent[]> {
   const tournamentIds = TARGET_TOURNAMENT_IDS.join(',');
 
-  const params = new URLSearchParams({
-    apiKey,
-    tournamentIds,
-    oddsFormat: 'decimal',
-  });
-
-  const res = await fetch(`${API_BASE}/odds-by-tournaments?${params}`, {
-    next: { revalidate: 0 },
-  });
-
-  if (!res.ok) {
-    if (res.status === 401) throw new Error('ODDSPAPI: chave de API inválida');
-    if (res.status === 429) throw new Error('ODDSPAPI: quota esgotada');
-    throw new Error(`ODDSPAPI: HTTP ${res.status}`);
+  // Step 1: fetch fixture metadata (with team names) for each tournament in parallel
+  const fixtureArrays = await Promise.all(
+    TARGET_TOURNAMENT_IDS.map(tid => fetchFixtures(apiKey, tid))
+  );
+  const fixtureMap = new Map<string, ApiFixture>();
+  for (const arr of fixtureArrays) {
+    for (const f of arr) {
+      fixtureMap.set(f.fixtureId, f);
+    }
   }
 
-  const data = await res.json();
-  const fixtures: ApiOddsFixture[] = Array.isArray(data) ? data : (data.data ?? data.fixtures ?? []);
+  if (fixtureMap.size === 0) return [];
 
-  const events = fixtures
-    .map(convertFixture)
-    .filter((e): e is OddsEvent => e !== null);
+  // Step 2: fetch odds per bookmaker in parallel (API requires one bookmaker at a time)
+  const slugs = Object.keys(BOOKMAKER_SLUGS);
+  const oddsArrays = await Promise.all(
+    slugs.map(slug => fetchOddsForBookmaker(apiKey, slug, tournamentIds))
+  );
+
+  // Step 3: index odds by fixtureId → bookmaker slug
+  // fixtureId → slug → ApiOddsFixture
+  const oddsIndex = new Map<string, Map<string, ApiOddsFixture>>();
+  for (let i = 0; i < slugs.length; i++) {
+    const slug = slugs[i];
+    for (const f of oddsArrays[i]) {
+      if (!oddsIndex.has(f.fixtureId)) oddsIndex.set(f.fixtureId, new Map());
+      oddsIndex.get(f.fixtureId)!.set(slug, f);
+    }
+  }
+
+  // Step 4: convert each fixture that has at least 1 bookmaker
+  const events: OddsEvent[] = [];
+  for (const [fixtureId, fixture] of fixtureMap) {
+    const oddsPerBook = oddsIndex.get(fixtureId) ?? new Map();
+    if (oddsPerBook.size === 0) continue;
+    const event = convertToOddsEvent(fixture, oddsPerBook);
+    if (event) events.push(event);
+  }
 
   // Sort: live first, then chronological
   return events.sort((a, b) => {
@@ -261,7 +350,9 @@ export async function fetchAllOddsOddsPapi(apiKey: string): Promise<OddsEvent[]>
   });
 }
 
-/** Discover available tournament IDs — call once to configure TARGET_TOURNAMENT_IDS */
+/** List sports available in the API */
 export async function discoverTournaments(apiKey: string) {
-  return fetchTournaments(apiKey);
+  const res = await fetch(`${API_BASE}/sports?apiKey=${apiKey}`, { next: { revalidate: 0 } });
+  if (!res.ok) throw new Error(`ODDSPAPI /sports: HTTP ${res.status}`);
+  return res.json();
 }

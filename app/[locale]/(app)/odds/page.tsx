@@ -4,6 +4,7 @@ import { getLocale } from 'next-intl/server';
 import { getEvents } from '@/lib/odds/fetcher';
 import type { Sport } from '@/lib/odds/types';
 import { calculateEV } from '@/lib/analytics/ev';
+import { sanitizeEV } from '@/lib/analytics/ev';
 import { formatTimeBRT } from '@/lib/utils/date';
 
 const SPORT_ICONS: Record<Sport, string> = {
@@ -15,28 +16,49 @@ const SPORT_ICONS: Record<Sport, string> = {
   hockey:     '🏒',
 };
 
-export default async function OddsPage() {
+const SPORT_LABELS: Record<string, string> = {
+  football:   'Futebol',
+  basketball: 'Basquete',
+  tennis:     'Tênis',
+  mma:        'MMA',
+};
+
+interface Props {
+  searchParams: Promise<{ sport?: string; filter?: string }>;
+}
+
+export default async function OddsPage({ searchParams }: Props) {
   const locale = await getLocale();
-  const events = await getEvents();
+  const sp     = await searchParams;
+  const sport  = sp.sport  ?? 'all';
+  const filter = sp.filter ?? '';
+
+  const allEvents = await getEvents();
+
+  // Apply sport filter
+  let events = sport === 'all' ? allEvents : allEvents.filter(e => e.sport === sport);
+
+  // Apply status/ev filter
+  if (filter === 'live')      events = events.filter(e => e.status === 'live');
+  if (filter === 'scheduled') events = events.filter(e => e.status === 'scheduled');
+  if (filter === 'ev')        events = events.filter(e => bestEV(e) > 0);
 
   const liveEvents = events.filter(e => e.status === 'live');
-  const scheduled  = events.filter(e => e.status === 'scheduled');
+  const scheduled  = events.filter(e => e.status !== 'live');
 
-  // Compute best EV per event across all selections
-  function bestEV(event: typeof events[0]) {
+  function bestEV(event: typeof allEvents[0]) {
     let best = -Infinity;
     for (const mkt of event.markets) {
       for (const sel of mkt.selections) {
         const topOdd = Math.max(...sel.books.map(b => b.odd));
-        const ev = calculateEV(sel.consensusProb, topOdd);
+        const ev = sanitizeEV(calculateEV(sel.consensusProb, topOdd));
         if (ev > best) best = ev;
       }
     }
-    return best;
+    return best === -Infinity ? 0 : best;
   }
 
-  // Get winner market selections (H/D/A or primary)
-  function winnerSelections(event: typeof events[0]) {
+  function winnerSelections(event: typeof allEvents[0]) {
     const mkt = event.markets.find(m => m.market === 'match_winner');
     return mkt?.selections ?? event.markets[0]?.selections ?? [];
   }
@@ -44,7 +66,24 @@ export default async function OddsPage() {
   const evColor = (ev: number) =>
     ev >= 0.10 ? 'var(--lime)' : ev >= 0.05 ? 'var(--green)' : ev > 0 ? 'var(--amber)' : 'var(--muted)';
 
+  function tabHref(newSport: string) {
+    const p = new URLSearchParams();
+    if (newSport !== 'all') p.set('sport', newSport);
+    if (filter) p.set('filter', filter);
+    const q = p.toString();
+    return `/${locale}/odds${q ? `?${q}` : ''}`;
+  }
+
+  function filterHref(newFilter: string) {
+    const p = new URLSearchParams();
+    if (sport !== 'all') p.set('sport', sport);
+    if (newFilter && newFilter !== filter) p.set('filter', newFilter);
+    const q = p.toString();
+    return `/${locale}/odds${q ? `?${q}` : ''}`;
+  }
+
   function EventSection({ list, title, live }: { list: typeof events; title: string; live?: boolean }) {
+    if (list.length === 0) return null;
     return (
       <section style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -52,7 +91,7 @@ export default async function OddsPage() {
           <span style={{
             fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
             textTransform: 'uppercase',
-            color: live ? 'var(--red)' : 'var(--muted)',
+            color: live ? 'var(--red)' : 'var(--text)',
           }}>
             {title}
           </span>
@@ -63,7 +102,6 @@ export default async function OddsPage() {
 
         <div className="table-wrap">
         <div className="card" style={{ overflow: 'hidden' }}>
-          {/* Table header */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '56px 1fr 180px 60px 48px',
@@ -84,11 +122,7 @@ export default async function OddsPage() {
             const sels = winnerSelections(event);
             const selCount = Math.min(sels.length, 3);
             return (
-              <Link
-                key={event.id}
-                href={`/${locale}/odds/${event.id}`}
-                style={{ textDecoration: 'none' }}
-              >
+              <Link key={event.id} href={`/${locale}/odds/${event.id}`} style={{ textDecoration: 'none' }}>
                 <div
                   className="tip-row"
                   style={{
@@ -99,27 +133,24 @@ export default async function OddsPage() {
                     alignItems: 'center',
                   }}
                 >
-                  {/* Time / Live */}
-                  <div style={{ fontSize: 11, color: event.status === 'live' ? 'var(--red)' : 'var(--muted)', fontWeight: event.status === 'live' ? 700 : 400, letterSpacing: event.status === 'live' ? '0.05em' : 0 }}>
+                  <div style={{ fontSize: 11, color: event.status === 'live' ? 'var(--red)' : 'var(--muted)', fontWeight: event.status === 'live' ? 700 : 400 }}>
                     {event.status === 'live'
                       ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span className="live-dot" />{event.elapsed}&apos;</span>
                       : formatTimeBRT(event.startsAt, event.status, event.elapsed)
                     }
                   </div>
 
-                  {/* Match */}
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
-                      {SPORT_ICONS[event.sport]} {event.home} <span style={{ color: 'var(--dim)', fontWeight: 400 }}>×</span> {event.away}
+                      {SPORT_ICONS[event.sport]} {event.home} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>×</span> {event.away}
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, fontStyle: 'italic' }}>{event.league}</div>
                   </div>
 
-                  {/* H/D/A odds chips */}
                   <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                     {sels.slice(0, selCount).map(sel => {
                       const best = sel.books.reduce((a, b) => b.odd > a.odd ? b : a, sel.books[0]);
-                      const selEV = calculateEV(sel.consensusProb, best?.odd ?? 0);
+                      const selEV = sanitizeEV(calculateEV(sel.consensusProb, best?.odd ?? 0));
                       const isValue = selEV > 0;
                       return (
                         <div key={sel.label} style={{
@@ -134,7 +165,6 @@ export default async function OddsPage() {
                           <div style={{
                             fontFamily: 'var(--font-cond)', fontSize: 15, fontWeight: 900,
                             color: isValue ? 'var(--lime)' : 'var(--text)', lineHeight: 1.1,
-                            letterSpacing: '-0.01em',
                           }}>
                             {best?.odd.toFixed(2) ?? '—'}
                           </div>
@@ -143,37 +173,32 @@ export default async function OddsPage() {
                     })}
                   </div>
 
-                  {/* Best EV */}
                   <div style={{ textAlign: 'center' }}>
-                    {ev > -Infinity && (
-                      <span style={{
-                        display: 'inline-block',
-                        fontSize: 11, fontWeight: 800,
-                        color: evColor(ev),
-                        background: `${evColor(ev)}18`,
-                        border: `1px solid ${evColor(ev)}44`,
-                        borderRadius: 5, padding: '3px 6px',
-                        fontFamily: 'var(--font-cond)',
-                      }}>
-                        {ev >= 0 ? '+' : ''}{(ev * 100).toFixed(1)}%
-                      </span>
-                    )}
+                    <span style={{
+                      display: 'inline-block',
+                      fontSize: 11, fontWeight: 800,
+                      color: evColor(ev),
+                      background: `${evColor(ev)}18`,
+                      border: `1px solid ${evColor(ev)}44`,
+                      borderRadius: 5, padding: '3px 6px',
+                      fontFamily: 'var(--font-cond)',
+                    }}>
+                      {ev >= 0 ? '+' : ''}{(ev * 100).toFixed(1)}%
+                    </span>
                   </div>
 
-                  {/* Arrow */}
-                  <div style={{ textAlign: 'right', color: 'var(--dim)', fontSize: 13 }}>→</div>
+                  <div style={{ textAlign: 'right', color: 'var(--muted)', fontSize: 13 }}>→</div>
                 </div>
               </Link>
             );
           })}
         </div>
-      </div>
+        </div>
       </section>
     );
   }
 
-  // Top EV events for sidebar
-  const topEV = [...events]
+  const topEV = [...allEvents]
     .map(e => ({ event: e, ev: bestEV(e) }))
     .filter(x => x.ev > 0)
     .sort((a, b) => b.ev - a.ev)
@@ -182,13 +207,13 @@ export default async function OddsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* ── KPIs ────────────────────────────────────────── */}
+      {/* KPIs */}
       <div className="kpi-row">
         {[
-          { label: 'Eventos hoje',  value: events.length,                                            accent: 'var(--lime)'  },
-          { label: 'Ao vivo',       value: liveEvents.length,                                        accent: 'var(--red)'   },
-          { label: 'Com EV+',       value: events.filter(e => bestEV(e) > 0).length,                 accent: 'var(--green)' },
-          { label: 'Mercados',      value: events.reduce((s, e) => s + e.markets.length, 0),          accent: 'var(--blue)'  },
+          { label: 'Eventos hoje',  value: allEvents.length,                                               accent: 'var(--lime)'  },
+          { label: 'Ao vivo',       value: allEvents.filter(e => e.status === 'live').length,              accent: 'var(--red)'   },
+          { label: 'Com EV+',       value: allEvents.filter(e => bestEV(e) > 0).length,                   accent: 'var(--green)' },
+          { label: 'Mercados',      value: allEvents.reduce((s, e) => s + e.markets.length, 0),            accent: 'var(--blue)'  },
         ].map(s => (
           <div key={s.label} className="kpi" style={{ '--kpi-accent': s.accent } as React.CSSProperties}>
             <div className="kpi-label">{s.label}</div>
@@ -197,41 +222,54 @@ export default async function OddsPage() {
         ))}
       </div>
 
-      {/* ── Filters ─────────────────────────────────────── */}
+      {/* Filters */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button className="stab on">Todos</button>
-        {(['football', 'basketball', 'tennis', 'mma'] as Sport[]).map(sport => (
-          <button key={sport} className="stab">
-            {SPORT_ICONS[sport]} {sport === 'football' ? 'Futebol' : sport === 'basketball' ? 'Basquete' : sport === 'tennis' ? 'Tênis' : 'MMA'}
-          </button>
+        {/* Sport tabs */}
+        <Link href={tabHref('all')} className={`f-tab${sport === 'all' ? ' on' : ''}`}>Todos</Link>
+        {(['football', 'basketball', 'tennis', 'mma'] as Sport[]).map(s => (
+          <Link key={s} href={tabHref(s)} className={`f-tab${sport === s ? ' on' : ''}`}>
+            {SPORT_ICONS[s]} {SPORT_LABELS[s]}
+          </Link>
         ))}
-        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />
-        <button className="stab on">Ao vivo</button>
-        <button className="stab">Agendados</button>
-        <button className="stab">EV+</button>
+        <span className="f-sep" />
+        {/* Status / special filters */}
+        <Link href={filterHref(filter === 'live' ? '' : 'live')} className={`f-tab${filter === 'live' ? ' on' : ''}`}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
+          Ao vivo
+        </Link>
+        <Link href={filterHref(filter === 'scheduled' ? '' : 'scheduled')} className={`f-tab${filter === 'scheduled' ? ' on' : ''}`}>
+          Agendados
+        </Link>
+        <Link href={filterHref(filter === 'ev' ? '' : 'ev')} className={`f-tab ev-tab${filter === 'ev' ? ' on' : ''}`}>
+          EV+
+        </Link>
       </div>
 
-      {/* ── Main: events + sidebar ──────────────────────── */}
+      {/* Main content */}
       <div className="page-grid" style={{ '--pg-cols': '1fr 252px', gap: 14 } as React.CSSProperties}>
-
-        {/* Events */}
         <div>
-          {liveEvents.length > 0 && (
-            <EventSection list={liveEvents} title="Ao Vivo" live />
+          {events.length === 0 ? (
+            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+              Nenhum evento encontrado para este filtro.
+            </div>
+          ) : (
+            <>
+              {liveEvents.length > 0 && <EventSection list={liveEvents} title="Ao Vivo" live />}
+              {scheduled.length > 0  && <EventSection list={scheduled}  title="Próximos" />}
+            </>
           )}
-          <EventSection list={scheduled} title="Próximos" />
         </div>
 
         {/* Sidebar */}
         <div className="page-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-          {/* Top EV */}
           <div className="card" style={{ overflow: 'hidden' }}>
             <div className="card-head">
               <div className="card-title">Melhores EV</div>
               <span className="ev-badge lime">{topEV.length}</span>
             </div>
-            {topEV.map(({ event, ev }, i) => (
+            {topEV.length === 0 ? (
+              <div style={{ padding: '16px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>Nenhum EV+ agora</div>
+            ) : topEV.map(({ event, ev }, i) => (
               <Link key={event.id} href={`/${locale}/odds/${event.id}`} style={{ textDecoration: 'none' }}>
                 <div className="tip-row" style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -245,10 +283,7 @@ export default async function OddsPage() {
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--muted)' }}>{event.league}</div>
                   </div>
-                  <span style={{
-                    fontSize: 11, fontWeight: 800, color: evColor(ev),
-                    fontFamily: 'var(--font-cond)',
-                  }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: evColor(ev), fontFamily: 'var(--font-cond)' }}>
                     +{(ev * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -256,25 +291,23 @@ export default async function OddsPage() {
             ))}
           </div>
 
-          {/* Guide */}
           <div className="card" style={{ padding: '14px 16px' }}>
             <div className="card-title" style={{ marginBottom: 10 }}>Como ler as odds</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { label: 'H · D · A', desc: 'Casa · Empate · Fora — melhor odd disponível em qualquer casa' },
-                { label: 'EV+',       desc: 'Expected Value positivo — a odd supera a probabilidade real estimada' },
-                { label: 'Lime',      desc: 'Linha destacada = melhor oportunidade no mercado' },
+                { label: 'H · D · A', desc: 'Casa · Empate · Fora — melhor odd disponível' },
+                { label: 'EV+',       desc: 'Expected Value positivo — a odd supera a prob. real estimada' },
+                { label: 'Lime',      desc: 'Linha destacada = melhor oportunidade' },
               ].map(item => (
                 <div key={item.label} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--lime)', fontFamily: 'var(--font-cond)', letterSpacing: '0.04em', flexShrink: 0, marginTop: 1 }}>
                     {item.label}
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>{item.desc}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text)', opacity: 0.7, lineHeight: 1.5 }}>{item.desc}</span>
                 </div>
               ))}
             </div>
           </div>
-
         </div>
       </div>
     </div>

@@ -22,6 +22,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth(() => ({
     verificationTokensTable: verificationTokens,
   }),
   session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-authjs.session-token'
+        : 'authjs.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60,
+      },
+    },
+  },
   pages: {
     signIn: '/login',
     error: '/login',

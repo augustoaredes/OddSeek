@@ -2,11 +2,38 @@ import { getLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { MOCK_LEADERBOARD } from '@/lib/community/mock-data';
 
-export default async function RankingPage() {
+interface Props {
+  searchParams: Promise<{ period?: string; sort?: string }>;
+}
+
+export default async function RankingPage({ searchParams }: Props) {
   const locale = await getLocale();
-  const entries = MOCK_LEADERBOARD;
+  const sp     = await searchParams;
+  const period = sp.period ?? '30';
+  const sort   = sp.sort   ?? 'roi';
 
   const medals = ['🥇', '🥈', '🥉'];
+
+  // Apply sort to mock data
+  const entries = [...MOCK_LEADERBOARD].sort((a, b) => {
+    if (sort === 'acerto') return b.hitRate - a.hitRate;
+    if (sort === 'lucro')  return b.totalProfit - a.totalProfit;
+    return b.roi - a.roi; // default: roi
+  }).map((e, i) => ({ ...e, rank: i + 1 }));
+
+  function periodHref(p: string) {
+    const params = new URLSearchParams();
+    params.set('period', p);
+    if (sort !== 'roi') params.set('sort', sort);
+    return `/${locale}/ranking?${params.toString()}`;
+  }
+
+  function sortHref(s: string) {
+    const params = new URLSearchParams();
+    if (period !== '30') params.set('period', period);
+    params.set('sort', s);
+    return `/${locale}/ranking?${params.toString()}`;
+  }
 
   function Avatar({ initials, size = 36 }: { initials: string; size?: number }) {
     return (
@@ -18,23 +45,27 @@ export default async function RankingPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 10 }}>
         <h1 style={{ fontFamily: 'var(--font-cond)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em', textTransform: 'uppercase', color: 'var(--text)', margin: 0 }}>
           Ranking Global
         </h1>
         <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
-          Top traders por ROI · últimos 30 dias
+          Top traders por ROI · últimos {period === '7' ? '7' : period === 'all' ? 'todos os' : '30'} dias
         </p>
       </div>
 
-      {/* Period filters */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        {['7 dias', '30 dias', 'Tudo'].map((p, i) => (
-          <button key={p} className={`stab${i === 1 ? ' on' : ''}`}>{p}</button>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {[{ label: '7 dias', value: '7' }, { label: '30 dias', value: '30' }, { label: 'Tudo', value: 'all' }].map(p => (
+          <Link key={p.value} href={periodHref(p.value)} className={`f-tab${period === p.value ? ' on' : ''}`}>
+            {p.label}
+          </Link>
         ))}
-        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />
-        {['ROI', 'Acerto', 'Lucro'].map((s, i) => (
-          <button key={s} className={`stab${i === 0 ? ' on' : ''}`}>{s}</button>
+        <span className="f-sep" />
+        {[{ label: 'ROI', value: 'roi' }, { label: 'Acerto', value: 'acerto' }, { label: 'Lucro', value: 'lucro' }].map(s => (
+          <Link key={s.value} href={sortHref(s.value)} className={`f-tab${sort === s.value ? ' on' : ''}`}>
+            {s.label}
+          </Link>
         ))}
       </div>
 
@@ -50,9 +81,11 @@ export default async function RankingPage() {
                 {entry.user.verified && <div style={{ fontSize: 10, color: 'var(--lime)', fontWeight: 700 }}>✓ Verificado</div>}
               </div>
               <div style={{ fontFamily: 'var(--font-cond)', fontSize: 28, fontWeight: 900, color: 'var(--lime)', lineHeight: 1 }}>
-                +{entry.roi.toFixed(1)}%
+                {sort === 'acerto' ? `${(entry.hitRate * 100).toFixed(0)}%` : sort === 'lucro' ? `R$${entry.totalProfit.toLocaleString('pt-BR')}` : `+${entry.roi.toFixed(1)}%`}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--muted)' }}>ROI · {entry.totalBets} apostas</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                {sort === 'acerto' ? 'Taxa de acerto' : sort === 'lucro' ? 'Lucro total' : 'ROI'} · {entry.totalBets} apostas
+              </div>
             </div>
           </Link>
         ))}
@@ -61,7 +94,6 @@ export default async function RankingPage() {
       {/* Full table */}
       <div className="table-wrap wide">
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          {/* Header */}
           <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 80px 80px 90px 70px', gap: 12, padding: '10px 20px', background: 'var(--s2)', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)' }}>
             <div>#</div><div>Trader</div><div style={{ textAlign: 'right' }}>ROI</div><div style={{ textAlign: 'right' }}>Acerto</div><div style={{ textAlign: 'right' }}>Lucro</div><div style={{ textAlign: 'right' }}>Apostas</div>
           </div>
@@ -69,7 +101,7 @@ export default async function RankingPage() {
           {entries.map((entry, i) => (
             <Link key={entry.user.handle} href={`/${locale}/perfil/${entry.user.handle}`} style={{ textDecoration: 'none' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 80px 80px 90px 70px', gap: 12, padding: '12px 20px', borderBottom: i < entries.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 900, fontFamily: 'var(--font-cond)', color: entry.rank <= 3 ? 'var(--lime)' : 'var(--dim)', textAlign: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 900, fontFamily: 'var(--font-cond)', color: entry.rank <= 3 ? 'var(--lime)' : 'var(--muted)', textAlign: 'center' }}>
                   {entry.rank <= 3 ? medals[entry.rank - 1] : entry.rank}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -79,7 +111,7 @@ export default async function RankingPage() {
                       {entry.user.name}
                       {entry.user.verified && <span style={{ fontSize: 9, color: 'var(--lime)' }}>✓</span>}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--dim)' }}>@{entry.user.handle}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>@{entry.user.handle}</div>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 800, color: 'var(--lime)', fontFamily: 'var(--font-cond)' }}>+{entry.roi.toFixed(1)}%</div>

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { getTips } from '@/lib/tips/fetcher';
 import { formatTimeBRT } from '@/lib/utils/date';
+import { sanitizeEV, formatEV } from '@/lib/analytics/ev';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -53,10 +54,12 @@ export default async function DashboardPage({
   const allTips = await getTips();
   const tips    = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
 
-  const positiveEV = allTips.filter(t => t.ev > 0);
+  const positiveEV = allTips.filter(t => sanitizeEV(t.ev) > 0);
   const elite      = allTips.filter(t => t.confidenceBand === 'elite');
   const bestTip    = allTips[0] ?? null;
-  const avgEV      = positiveEV.length > 0 ? positiveEV.reduce((s, t) => s + t.ev, 0) / positiveEV.length : 0;
+  const avgEV      = positiveEV.length > 0
+    ? positiveEV.reduce((s, t) => s + sanitizeEV(t.ev), 0) / positiveEV.length
+    : 0;
   const bestOdd    = allTips.length > 0 ? allTips.reduce((b, t) => t.odd > b.odd ? t : b, allTips[0]) : null;
 
   const displayTips = tips.slice(0, 12);
@@ -74,7 +77,7 @@ export default async function DashboardPage({
         <div className="stat-card">
           <div className="sc-label">EV médio</div>
           <div className="sc-val" style={{ color: 'var(--green)' }}>
-            {avgEV > 0 ? `+${(avgEV * 100).toFixed(1)}%` : '—'}
+            {avgEV > 0 ? formatEV(avgEV) : '—'}
           </div>
           <div className="sc-sub">{elite.length} elite</div>
         </div>
@@ -205,7 +208,7 @@ export default async function DashboardPage({
                 {/* EV */}
                 <div className="ev-ev">
                   <div className={`ev-badge ${evCls}`}>
-                    {tip.ev >= 0 ? '+' : ''}{(tip.ev * 100).toFixed(0)}%
+                    {formatEV(sanitizeEV(tip.ev), 0)}
                   </div>
                 </div>
               </Link>

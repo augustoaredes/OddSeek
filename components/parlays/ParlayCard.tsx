@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { RiskBadge } from './RiskBadge';
 import { EVBadge } from '@/components/odds/EVBadge';
+import { sanitizeEV } from '@/lib/analytics/ev';
 import type { SuggestedParlay } from '@/lib/tips/parlay-suggestions';
 
 interface ParlayCardProps {
@@ -84,7 +85,7 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
               {i + 1}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: 12, color: 'var(--text)', opacity: 0.7, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {tip.matchLabel.replace(/^[^\s]+\s/, '')}
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
@@ -123,7 +124,7 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
         {[
           { label: 'Odd Total',   value: analysis.parlayOdd.toFixed(2) },
           { label: 'Prob. Comb.', value: `${(analysis.combinedProbability * 100).toFixed(1)}%` },
-          { label: 'EV Total',    value: `${analysis.ev >= 0 ? '+' : ''}${(analysis.ev * 100).toFixed(1)}%` },
+          { label: 'EV Total',    value: `${sanitizeEV(analysis.ev) >= 0 ? '+' : ''}${(sanitizeEV(analysis.ev) * 100).toFixed(1)}%` },
         ].map(stat => (
           <div key={stat.label} style={{ textAlign: 'center' }}>
             <div
