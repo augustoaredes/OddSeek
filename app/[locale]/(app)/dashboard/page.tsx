@@ -4,6 +4,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import { getTips } from '@/lib/tips/fetcher';
 import { formatGameTimeBRT } from '@/lib/utils/date';
 import { sanitizeEV, formatEV } from '@/lib/analytics/ev';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
   'Bet365':            { bg: '#00843D', text: '#fff' },
@@ -92,7 +93,7 @@ export default async function DashboardPage({
           <div className="sc-sub">↑ {positiveEV.length} com EV+</div>
         </div>
         <div className="stat-card">
-          <div className="sc-label">EV médio</div>
+          <div className="sc-label"><Tooltip content="Valor Esperado médio: indica o quanto as odds estão acima do risco real. Positivo = vantagem para você.">EV médio</Tooltip></div>
           <div className="sc-val" style={{ color: 'var(--green)' }}>
             {avgEV > 0 ? formatEV(avgEV) : '—'}
           </div>
@@ -269,12 +270,12 @@ export default async function DashboardPage({
                 {(() => {
                   const safeProb = Math.max(0, Math.min(1, bestTip.probability));
                   return [
-                    { label: 'Prob. real',  val: `${(safeProb * 100).toFixed(0)}%`,             fill: Math.round(safeProb * 100),             color: 'var(--lime)' },
-                    { label: 'Prob. impl.', val: `${((1 / bestTip.odd) * 100).toFixed(0)}%`,    fill: Math.round((1 / bestTip.odd) * 100),    color: 'var(--muted)' },
-                    { label: 'Confiança',   val: `${bestTip.confidence}%`,                       fill: bestTip.confidence,                      color: 'var(--green)' },
+                    { key: 'prob-real',  label: <Tooltip content="Probabilidade calculada pelo OddSeek com base nas odds de várias casas — o quanto a equipe realmente tem de chance.">Prob. real</Tooltip>,  val: `${(safeProb * 100).toFixed(0)}%`,             fill: Math.round(safeProb * 100),             color: 'var(--lime)' },
+                    { key: 'prob-impl',  label: <Tooltip content="Probabilidade implícita: o que a casa de apostas 'está dizendo' ao oferecer essa odd. Se for menor que a prob. real, há vantagem.">Prob. impl.</Tooltip>, val: `${((1 / bestTip.odd) * 100).toFixed(0)}%`,    fill: Math.round((1 / bestTip.odd) * 100),    color: 'var(--muted)' },
+                    { key: 'confianca',  label: <Tooltip content="Índice OddSeek de 0 a 100 que combina a vantagem na odd com o histórico do mercado. Quanto maior, mais confiante.">Confiança</Tooltip>,   val: `${bestTip.confidence}%`,                       fill: bestTip.confidence,                      color: 'var(--green)' },
                   ];
                 })().map(row => (
-                  <div key={row.label} className="ai-prob-row">
+                  <div key={row.key} className="ai-prob-row">
                     <div className="ai-prob-label">{row.label}</div>
                     <div className="ai-prob-track">
                       <div className="ai-prob-fill" style={{ width: `${row.fill}%`, background: row.color }} />
@@ -285,7 +286,7 @@ export default async function DashboardPage({
                 <div className="conf-row">
                   <div>
                     <div className="conf-num">{bestTip.confidence}</div>
-                    <div className="conf-label">Confiança</div>
+                    <div className="conf-label"><Tooltip content="Índice OddSeek de 0 a 100 que combina a vantagem na odd com o histórico do mercado. Quanto maior, mais confiante.">Confiança</Tooltip></div>
                   </div>
                   <div className="conf-best">
                     <div className="conf-odd">{bestTip.odd.toFixed(2)}</div>

@@ -3,6 +3,7 @@ import { getLocale } from 'next-intl/server';
 import { getTips } from '@/lib/tips/fetcher';
 import { sanitizeEV } from '@/lib/analytics/ev';
 import { formatGameTimeBRT } from '@/lib/utils/date';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 const SPORT_ICONS: Record<string, string> = {
   football:   '⚽',
@@ -205,7 +206,7 @@ export default async function TipsPage({ searchParams }: Props) {
                       </svg>
                       <div className="tc-conf-val" style={{ color: confColor }}>{tip.confidence}</div>
                     </div>
-                    <div className="tc-kelly">Kelly: <span>{kelly}</span></div>
+                    <div className="tc-kelly"><Tooltip content="Valor sugerido para apostar, calculado com base na sua vantagem e bankroll. Usar % do seu saldo total.">Sugerido:</Tooltip> <span>{kelly}</span></div>
                   </div>
                 </div>
 

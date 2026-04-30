@@ -61,7 +61,7 @@ const OddsMockup = () => (
       </div>
     ))}
     <div className="fm-ev-row">
-      <span>EV esperado na melhor casa:</span>
+      <span>Vantagem na melhor casa:</span>
       <span style={{ color: 'var(--lime)', fontWeight: 800 }}>+8.2%</span>
     </div>
   </div>
@@ -71,7 +71,7 @@ const BancaMockup = () => (
   <div className="feat-mockup">
     <div className="fm-header">
       <div className="fm-title">Gestão de Banca</div>
-      <div className="fm-badge" style={{ background: 'oklch(75% 0.16 75 / 0.12)', color: 'var(--amber)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Kelly 1/2</div>
+      <div className="fm-badge" style={{ background: 'oklch(75% 0.16 75 / 0.12)', color: 'var(--amber)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Valor por jogo</div>
     </div>
     <div className="fm-banca-kpis">
       {[
@@ -102,7 +102,7 @@ const BancaMockup = () => (
         <circle cx="6" cy="6" r="5" stroke="var(--lime)" strokeWidth="1.2" />
         <path d="M6 4v3M6 8.5v.3" stroke="var(--lime)" strokeWidth="1.2" strokeLinecap="round" />
       </svg>
-      Stake sugerido: 2.1u — Perfil moderado
+      Valor sugerido: 2.1u — Perfil moderado
     </div>
   </div>
 );
@@ -119,7 +119,7 @@ export async function FeaturesGrid() {
         </svg>
       ),
       h: 'Parlay Inteligente',
-      p: 'Crie múltiplas com pernas de EV+ identificadas automaticamente. Calculamos probabilidade combinada real.',
+      p: 'Monte apostas combinadas com as melhores oportunidades do dia — o sistema seleciona as mais vantajosas para você.',
       tag: 'NOVO',
     },
     {
@@ -130,7 +130,7 @@ export async function FeaturesGrid() {
         </svg>
       ),
       h: 'Alertas em tempo real',
-      p: 'Receba notificação quando uma odd subir acima do EV de corte que você configurou.',
+      p: 'Você define o que quer acompanhar e a gente avisa quando surgir uma boa oportunidade.',
     },
     {
       icon: (
@@ -162,8 +162,8 @@ export async function FeaturesGrid() {
           <em>para apostar melhor</em>
         </h2>
         <p className="sp">
-          Ferramentas profissionais de análise de valor esperado, antes disponíveis
-          apenas para sindicatos e traders quantitativos.
+          Ferramentas que profissionais usam há anos, agora disponíveis para qualquer apostador
+          — sem precisar de curso ou planilha.
         </p>
 
         {/* Big feature cards */}
@@ -172,15 +172,15 @@ export async function FeaturesGrid() {
           <div className="feat-big-card">
             <div className="feat-big-body">
               <div className="feat-big-tag">Identificação de valor</div>
-              <h3 className="feat-big-h">Tips com EV+<br />em tempo real</h3>
+              <h3 className="feat-big-h">Apostas que valem<br />a pena, ao vivo</h3>
               <p className="feat-big-p">
-                Nosso motor compara a probabilidade real (devigorizada) com a
-                odd disponível nas casas. Só mostramos apostas onde há edge real.
+                Comparamos as probabilidades reais de cada jogo com o que as casas estão pagando.
+                Quando encontramos uma odd maior que o risco real, marcamos como oportunidade.
               </p>
               <div className="feat-big-pills">
-                <div className="feat-big-pill">Kelly Half</div>
-                <div className="feat-big-pill">Score de confiança</div>
-                <div className="feat-big-pill">Edge calculado</div>
+                <div className="feat-big-pill">Valor sugerido</div>
+                <div className="feat-big-pill">Nível de confiança</div>
+                <div className="feat-big-pill">Vantagem calculada</div>
               </div>
             </div>
             <div className="feat-big-mockup-wrap">
@@ -197,7 +197,7 @@ export async function FeaturesGrid() {
               <h3 className="feat-big-h">Melhor odd em<br />10+ casas</h3>
               <p className="feat-big-p">
                 Comparamos Bet365, Betano, KTO, Stake, 1xBet e mais.
-                Destacamos automaticamente a casa com maior valor esperado.
+                Destacamos automaticamente a casa que está pagando mais pelo mesmo jogo.
               </p>
               <div className="feat-big-pills">
                 <div className="feat-big-pill" style={{ color: 'var(--green)', background: 'oklch(65% 0.2 150 / 0.08)', borderColor: 'oklch(65% 0.2 150 / 0.2)' }}>10+ casas</div>
@@ -216,15 +216,15 @@ export async function FeaturesGrid() {
               <div className="feat-big-tag" style={{ color: 'var(--amber)', borderColor: 'oklch(75% 0.16 75 / 0.3)', background: 'oklch(75% 0.16 75 / 0.08)' }}>
                 Gestão de banca
               </div>
-              <h3 className="feat-big-h">Banca profissional<br />com Kelly automático</h3>
+              <h3 className="feat-big-h">Controle seu dinheiro<br />como um profissional</h3>
               <p className="feat-big-p">
-                Calcule o stake ideal para cada aposta baseado no seu bankroll atual,
-                perfil de risco e EV identificado. Alertas quando o drawdown é alto.
+                Diga quanto você tem para apostar e qual o seu perfil de risco. O OddSeek
+                calcula automaticamente quanto colocar em cada jogo e avisa quando é hora de parar.
               </p>
               <div className="feat-big-pills">
-                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Kelly 1/2</div>
-                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>ROI tracking</div>
-                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Alertas de drawdown</div>
+                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Valor por jogo</div>
+                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Lucro acumulado</div>
+                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Aviso de limite</div>
               </div>
             </div>
             <div className="feat-big-mockup-wrap">

@@ -46,15 +46,15 @@ export async function Hero({ locale }: Props) {
 
         {/* Headline */}
         <h1 className="hero-v2-h1">
-          Encontre apostas<br />
-          com <span className="hero-v2-hl">EV positivo</span><br />
-          <span className="hero-v2-stroke">em segundos.</span>
+          Descubra onde está<br />
+          o <span className="hero-v2-hl">melhor valor</span><br />
+          <span className="hero-v2-stroke">antes de apostar.</span>
         </h1>
 
         {/* Subtitle */}
         <p className="hero-v2-sub">
-          O OddSeek compara odds em 10+ casas, calcula o valor esperado real
-          e gerencia sua banca com Kelly automaticamente.
+          O OddSeek compara odds em 10+ casas e mostra exatamente onde seu dinheiro rende mais
+          — sem precisar entender de matemática.
         </p>
 
         {/* Email capture */}
