@@ -72,7 +72,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="pt-BR"
       className={`${barlow.variable} ${barlowCondensed.variable} ${instrumentSerif.variable} ${spaceGrotesk.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        {/* Runs before React hydration to prevent flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme')||'light';document.documentElement.dataset.theme=t;}catch(e){}})();` }} />
+        {children}
+      </body>
     </html>
   );
 }

@@ -7,6 +7,16 @@ import { EVBadge } from '@/components/odds/EVBadge';
 import { sanitizeEV } from '@/lib/analytics/ev';
 import type { SuggestedParlay } from '@/lib/tips/parlay-suggestions';
 
+const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
+  'Bet365':            { bg: '#00843D', text: '#fff' },
+  'Betano':            { bg: '#E30613', text: '#fff' },
+  'Sportingbet':       { bg: '#1155CC', text: '#fff' },
+  'Pixbet':            { bg: '#0057FF', text: '#fff' },
+  'Superbet':          { bg: '#7B1FA2', text: '#fff' },
+  'Stake':             { bg: '#1B4F72', text: '#3FC3EE' },
+  'Esportes da Sorte': { bg: '#FF6B00', text: '#fff' },
+};
+
 interface ParlayCardProps {
   parlay: SuggestedParlay;
 }
@@ -94,6 +104,19 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
                   — {tip.market}
                 </span>
               </div>
+              {tip.book && (() => {
+                const bs = BOOK_COLORS[tip.book] ?? { bg: '#3A3D45', text: '#fff' };
+                return (
+                  <span style={{
+                    display: 'inline-block', marginTop: 4,
+                    fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
+                    padding: '2px 6px', borderRadius: 3,
+                    background: bs.bg, color: bs.text,
+                  }}>
+                    {tip.book}
+                  </span>
+                );
+              })()}
             </div>
             <span
               style={{
@@ -145,27 +168,55 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
         ))}
       </div>
 
-      {/* CTA */}
-      <button
-        onClick={handleSelect}
-        style={{
-          width: '100%',
-          padding: '12px 0',
-          borderRadius: 8,
-          background: 'var(--lime)',
-          border: 'none',
-          color: '#000',
-          fontSize: 13,
-          fontWeight: 800,
-          fontFamily: 'var(--font-cond), Barlow Condensed, sans-serif',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          cursor: 'pointer',
-        }}
-        type="button"
-      >
-        Registrar na Banca →
-      </button>
+      {/* CTAs */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {parlay.legs[0]?.tip?.affiliateUrl && (
+          <a
+            href={parlay.legs[0].tip.affiliateUrl}
+            target="_blank"
+            rel="sponsored noopener noreferrer"
+            style={{
+              flex: 1,
+              padding: '12px 0',
+              borderRadius: 8,
+              background: 'var(--surface)',
+              border: '1px solid var(--lime)',
+              color: 'var(--lime)',
+              fontSize: 13,
+              fontWeight: 800,
+              fontFamily: 'var(--font-cond), Barlow Condensed, sans-serif',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              textAlign: 'center',
+              display: 'block',
+            }}
+          >
+            Apostar →
+          </a>
+        )}
+        <button
+          onClick={handleSelect}
+          style={{
+            flex: 1,
+            padding: '12px 0',
+            borderRadius: 8,
+            background: 'var(--lime)',
+            border: 'none',
+            color: '#000',
+            fontSize: 13,
+            fontWeight: 800,
+            fontFamily: 'var(--font-cond), Barlow Condensed, sans-serif',
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}
+          type="button"
+        >
+          + Banca
+        </button>
+      </div>
     </article>
   );
 }

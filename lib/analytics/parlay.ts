@@ -52,8 +52,8 @@ export function analyzeParlayy(legs: ParlayLeg[]): ParlayAnalysis {
   const prob = combinedProbability(safelegs);
   const odd = parlayOdd(safelegs);
   const rawEv = calculateEV(prob, odd);
-  // Guard against corrupted probability/odd data producing invalid EV
-  const ev = isFinite(rawEv) && Math.abs(rawEv) <= 9.99 ? rawEv : -1;
+  // Guard: realistic max parlay EV is ~150%. Anything above = corrupted probability data.
+  const ev = isFinite(rawEv) && rawEv >= -1 && rawEv <= 1.5 ? rawEv : -1;
 
   let riskLevel: RiskLevel;
   if (sameEventConflict || prob < 0.15 || ev < 0) {

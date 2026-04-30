@@ -36,8 +36,8 @@ function confidenceBand(prob: number): ConfidenceBand {
 }
 
 export async function getTips(): Promise<Tip[]> {
-  // Without an API key, return mock tips
-  if (!process.env.ODDS_API_KEY) return MOCK_TIPS;
+  // Without any API key, return mock tips
+  if (!process.env.ODDS_API_KEY && !process.env.ODDSPAPI_KEY) return MOCK_TIPS;
 
   const events = await getEvents();
 
@@ -67,7 +67,7 @@ export async function getTips(): Promise<Tip[]> {
           selection:      sel.label,
           book:           bestBook.book,
           odd:            bestBook.odd,
-          probability:    sel.consensusProb,
+          probability:    Math.max(0, Math.min(1, isFinite(sel.consensusProb) ? sel.consensusProb : 0)),
           ev:             bestBook.ev,
           evBand:         bestBook.ev >= 0.10 ? 'high' : bestBook.ev >= 0.05 ? 'highlight' : 'value',
           confidence:     Math.round(Math.min(sel.consensusProb * 100, 99)),

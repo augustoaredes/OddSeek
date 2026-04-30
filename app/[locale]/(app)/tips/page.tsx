@@ -1,14 +1,16 @@
 import Link from 'next/link';
 import { getLocale } from 'next-intl/server';
 import { getTips } from '@/lib/tips/fetcher';
-import { formatTimeBRT } from '@/lib/utils/date';
 import { sanitizeEV } from '@/lib/analytics/ev';
+import { formatGameTimeBRT } from '@/lib/utils/date';
 
-const SPORT_DOTS: Record<string, string> = {
-  football:   '#4ade80',
-  basketball: '#a78bfa',
-  tennis:     '#fcd34d',
-  mma:        '#f87171',
+const SPORT_ICONS: Record<string, string> = {
+  football:   '⚽',
+  basketball: '🏀',
+  tennis:     '🎾',
+  mma:        '🥊',
+  baseball:   '⚾',
+  hockey:     '🏒',
 };
 
 const SPORT_LABELS: Record<string, string> = {
@@ -16,6 +18,15 @@ const SPORT_LABELS: Record<string, string> = {
   basketball: 'Basquete',
   tennis:     'Tênis',
   mma:        'MMA',
+};
+
+const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
+  'Bet365':      { bg: '#00843D', text: '#fff' },
+  'Betano':      { bg: '#E30613', text: '#fff' },
+  'Sportingbet': { bg: '#1155CC', text: '#fff' },
+  'Pixbet':      { bg: '#0057FF', text: '#fff' },
+  'Superbet':    { bg: '#7B1FA2', text: '#fff' },
+  'Stake':       { bg: '#1B4F72', text: '#3FC3EE' },
 };
 
 function evClass(ev: number): string {
@@ -53,11 +64,11 @@ export default async function TipsPage({ searchParams }: Props) {
   const positiveEV = allTips.filter(t => t.ev > 0).length;
 
   const sportFilters = [
-    { value: 'all',        label: 'Todos' },
-    { value: 'football',   label: 'Futebol',  dot: '#4ade80' },
-    { value: 'basketball', label: 'Basquete', dot: '#a78bfa' },
-    { value: 'tennis',     label: 'Tênis',    dot: '#fcd34d' },
-    { value: 'mma',        label: 'MMA',      dot: '#f87171' },
+    { value: 'all',        label: 'Todos',    icon: '' },
+    { value: 'football',   label: 'Futebol',  icon: '⚽' },
+    { value: 'basketball', label: 'Basquete', icon: '🏀' },
+    { value: 'tennis',     label: 'Tênis',    icon: '🎾' },
+    { value: 'mma',        label: 'MMA',      icon: '🥊' },
   ];
 
   function tabHref(newSport: string) {
@@ -96,9 +107,7 @@ export default async function TipsPage({ searchParams }: Props) {
               href={tabHref(f.value)}
               className={`f-tab${sport === f.value ? ' on' : ''}`}
             >
-              {f.dot && (
-                <span className="f-sport-dot" style={{ background: f.dot }} />
-              )}
+              {f.icon && <span style={{ fontSize: 12 }}>{f.icon}</span>}
               {f.label}
             </Link>
           ))}
@@ -125,7 +134,7 @@ export default async function TipsPage({ searchParams }: Props) {
             </div>
           ) : tips.map((tip, i) => {
             const isElite = tip.ev >= 0.10;
-            const isLive  = i < 2; // mock: primeiros 2 são "ao vivo"
+            const isLive  = i < 2;
             const radius  = 12;
             const circum  = 2 * Math.PI * radius;
             const confOffset = circum - (tip.confidence / 100) * circum;
@@ -134,14 +143,14 @@ export default async function TipsPage({ searchParams }: Props) {
             const matchParts = tip.matchLabel.replace(/^[^\s]+\s/, '').split(/ × | vs /i);
             const home = matchParts[0]?.trim() ?? '';
             const away = matchParts[1]?.trim() ?? '';
-            const dotColor = SPORT_DOTS[tip.sport] ?? '#8A8780';
+            const bookStyle = BOOK_COLORS[tip.book] ?? { bg: '#3A3D45', text: '#fff' };
 
             return (
               <div key={tip.id} className={`tip-card${isElite ? ' elite' : ''}`}>
                 {/* Head */}
                 <div className="tc-head">
                   <div className="tc-league">
-                    <span className="tc-league-dot" style={{ background: dotColor }} />
+                    <span style={{ fontSize: 13, lineHeight: 1 }}>{SPORT_ICONS[tip.sport] ?? '🎯'}</span>
                     {tip.league}
                   </div>
                   <div className="tc-status">
@@ -151,7 +160,7 @@ export default async function TipsPage({ searchParams }: Props) {
                         67&apos;
                       </div>
                     ) : (
-                      <span className="tc-time">{formatTimeBRT(tip.expiresAt)}</span>
+                      <span className="tc-time">{formatGameTimeBRT(tip.expiresAt)}</span>
                     )}
                   </div>
                 </div>
@@ -163,14 +172,21 @@ export default async function TipsPage({ searchParams }: Props) {
                     {away && <span>{away}</span>}
                   </div>
                   <div className="tc-tip-row">
-                    <div>
-                      <div className="tc-tip-label">Aposta</div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="tc-tip-label">{tip.market}</div>
                       <div className="tc-tip">{tip.selection}</div>
                     </div>
                     <div className="tc-odd-wrap">
                       <div className="tc-odd-label">Melhor odd</div>
                       <div className="tc-odd">{tip.odd.toFixed(2)}</div>
-                      <div className="tc-house">{tip.book}</div>
+                      <span style={{
+                        display: 'inline-block', marginTop: 3,
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
+                        padding: '2px 6px', borderRadius: 3,
+                        background: bookStyle.bg, color: bookStyle.text,
+                      }}>
+                        {tip.book}
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -1,7 +1,22 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
+import { ThemeToggle } from './ThemeToggle';
+
+const PAGE_TITLES: Record<string, string> = {
+  '/dashboard':        'Dashboard',
+  '/tips':             'Tips',
+  '/odds':             'Odds',
+  '/multiplas':        'Múltiplas',
+  '/banca':            'Banca',
+  '/banca/apostas':    'Apostas',
+  '/banca/insights':   'Insights',
+  '/comunidade':       'Comunidade',
+  '/ranking':          'Ranking',
+  '/configuracoes':    'Configurações',
+};
 
 interface AppTopbarProps {
   title?: string;
@@ -11,11 +26,16 @@ interface AppTopbarProps {
 export function AppTopbar({ title, liveCount = 14 }: AppTopbarProps) {
   const t = useTranslations('dashboard');
   const locale = useLocale();
+  const pathname = usePathname();
+
+  // strip locale prefix: /pt-BR/dashboard → /dashboard
+  const pathKey = pathname.replace(/^\/[^/]+/, '') || '/dashboard';
+  const dynamicTitle = title ?? PAGE_TITLES[pathKey] ?? t('title');
 
   return (
     <div className="topbar">
-      {/* Logo visível só no mobile (substitui sidebar) */}
-      <Link href={`/${locale}/dashboard`} className="topbar-mobile-logo lw" style={{ fontSize: 18, textDecoration: 'none' }}>
+      {/* Logo mobile — toca para ir à página inicial */}
+      <Link href={`/${locale}`} className="topbar-mobile-logo lw" style={{ fontSize: 18, textDecoration: 'none' }}>
         <span className="lw-bet">Odd</span>
         <span className="lw-mind">Seek</span>
       </Link>
@@ -32,7 +52,7 @@ export function AppTopbar({ title, liveCount = 14 }: AppTopbarProps) {
           color: 'var(--muted)',
         }}
       >
-        {title ?? t('title')}
+        {dynamicTitle}
       </div>
       <div className="topbar-sep" />
 
@@ -40,6 +60,8 @@ export function AppTopbar({ title, liveCount = 14 }: AppTopbarProps) {
         <div className="live-dot" />
         {liveCount} {t('active_tips').toLowerCase()}
       </div>
+
+      <ThemeToggle />
 
       <button className="icon-btn" aria-label="Alerts">
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none">

@@ -32,3 +32,13 @@ export function formatTimeOnlyBRT(iso: string): string {
     timeZone: BRT,
   });
 }
+
+/** "Hoje · 23:30" or "26/04 · 23:30" */
+export function formatGameTimeBRT(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const todayStr = now.toLocaleDateString('pt-BR', { timeZone: BRT, day: '2-digit', month: '2-digit' });
+  const dateStr  = d.toLocaleDateString('pt-BR', { timeZone: BRT, day: '2-digit', month: '2-digit' });
+  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BRT });
+  return todayStr === dateStr ? `Hoje · ${time}` : `${dateStr} · ${time}`;
+}

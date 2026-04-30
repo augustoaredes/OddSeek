@@ -2,14 +2,31 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { getTips } from '@/lib/tips/fetcher';
-import { formatTimeBRT } from '@/lib/utils/date';
+import { formatGameTimeBRT } from '@/lib/utils/date';
 import { sanitizeEV, formatEV } from '@/lib/analytics/ev';
+
+const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
+  'Bet365':            { bg: '#00843D', text: '#fff' },
+  'Betano':            { bg: '#E30613', text: '#fff' },
+  'Sportingbet':       { bg: '#1155CC', text: '#fff' },
+  'Pixbet':            { bg: '#0057FF', text: '#fff' },
+  'Superbet':          { bg: '#7B1FA2', text: '#fff' },
+  'Stake':             { bg: '#1B4F72', text: '#3FC3EE' },
+  'Esportes da Sorte': { bg: '#FF6B00', text: '#fff' },
+};
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'dashboard' });
   return { title: t('title') };
 }
+
+const SPORT_ICONS: Record<string, string> = {
+  football:   '⚽',
+  basketball: '🏀',
+  tennis:     '🎾',
+  mma:        '🥊',
+};
 
 const SPORT_DOTS: Record<string, string> = {
   football:   '#4ade80',
@@ -19,11 +36,11 @@ const SPORT_DOTS: Record<string, string> = {
 };
 
 const SPORT_FILTERS = [
-  { value: 'all',        label: 'Todos' },
-  { value: 'football',   label: 'Futebol',  dot: '#4ade80' },
-  { value: 'basketball', label: 'Basquete', dot: '#a78bfa' },
-  { value: 'tennis',     label: 'Tênis',    dot: '#fcd34d' },
-  { value: 'mma',        label: 'MMA',      dot: '#f87171' },
+  { value: 'all',        label: 'Todos',    icon: '' },
+  { value: 'football',   label: 'Futebol',  icon: '⚽', dot: '#4ade80' },
+  { value: 'basketball', label: 'Basquete', icon: '🏀', dot: '#a78bfa' },
+  { value: 'tennis',     label: 'Tênis',    icon: '🎾', dot: '#fcd34d' },
+  { value: 'mma',        label: 'MMA',      icon: '🥊', dot: '#f87171' },
 ];
 
 const staticOdds = [
@@ -103,7 +120,7 @@ export default async function DashboardPage({
             return (
               <Link key={f.value} href={href}
                 className={`f-tab${sportFilter === f.value ? ' on' : ''}`}>
-                {f.dot && <span className="f-sport-dot" style={{ background: f.dot }} />}
+                {f.icon && <span style={{ fontSize: 12 }}>{f.icon}</span>}
                 {f.label}
               </Link>
             );
@@ -124,6 +141,8 @@ export default async function DashboardPage({
 
         {/* Events list */}
         <div className="dash-events">
+          {/* Scroll wrapper — header + rows share same min-width so columns stay aligned */}
+          <div style={{ minWidth: 560, overflow: 'visible' }}>
           {/* Table header */}
           <div className="ev-table-head" style={{ padding: '8px 0' }}>
             <div className="eth">Hora</div>
@@ -151,9 +170,12 @@ export default async function DashboardPage({
             const oX = +(tip.odd * 0.62 + 0.3).toFixed(2);
             const o2 = +(tip.odd * 0.48 + 0.2).toFixed(2);
 
+            const bookStyle = BOOK_COLORS[tip.book] ?? { bg: '#3A3D45', text: '#fff' };
+            const sportIcon = SPORT_ICONS[tip.sport] ?? '🎯';
+
             return (
               <Link key={tip.id} href={`/${locale}/tips`}
-                className="event-row" style={{ textDecoration: 'none', display: 'grid', gridTemplateColumns: '60px 1fr 148px 120px 56px', alignItems: 'center', padding: '0', minHeight: 58, borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .12s' }}>
+                className="event-row" style={{ textDecoration: 'none', display: 'grid', gridTemplateColumns: '68px 1fr 148px 110px 56px', alignItems: 'center', padding: '0', minHeight: 58, borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .12s' }}>
 
                 {/* Time */}
                 <div>
@@ -163,14 +185,14 @@ export default async function DashboardPage({
                       67&apos;
                     </div>
                   ) : (
-                    <div className="ev-time">{formatTimeBRT(tip.expiresAt)}</div>
+                    <div className="ev-time" style={{ fontSize: 11, lineHeight: 1.3 }}>{formatGameTimeBRT(tip.expiresAt)}</div>
                   )}
                 </div>
 
                 {/* Match */}
                 <div>
                   <div className="ev-sport-tag">
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />
+                    <span style={{ fontSize: 11 }}>{sportIcon}</span>
                     &nbsp;{tip.league}
                   </div>
                   <div className="ev-team-row">
@@ -178,7 +200,7 @@ export default async function DashboardPage({
                   </div>
                   {away && (
                     <div className="ev-team-row">
-                      <div className="ev-teams" style={{ opacity: 0.75 }}>{away}</div>
+                      <div className="ev-teams">{away}</div>
                     </div>
                   )}
                 </div>
@@ -201,8 +223,16 @@ export default async function DashboardPage({
 
                 {/* Book */}
                 <div style={{ paddingLeft: 8 }}>
-                  <div style={{ fontSize: 11, color: 'var(--lime)', fontWeight: 600, fontFamily: 'var(--font-cond)', whiteSpace: 'nowrap' }}>{tip.book}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{tip.market.slice(0, 14)}</div>
+                  <span style={{
+                    display: 'inline-block', marginBottom: 3,
+                    fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
+                    padding: '2px 6px', borderRadius: 3,
+                    background: bookStyle.bg, color: bookStyle.text,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {tip.book}
+                  </span>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{tip.market}</div>
                 </div>
 
                 {/* EV */}
@@ -223,6 +253,7 @@ export default async function DashboardPage({
               </Link>
             </div>
           )}
+          </div>{/* end scroll wrapper */}
         </div>
 
         {/* Right analysis panel */}
@@ -233,13 +264,16 @@ export default async function DashboardPage({
             <div className="rp-block">
               <div className="rp-title">Análise IA</div>
               <div className="ai-rec">
-                <div className="ai-rec-label">{bestTip.league}</div>
+                <div className="ai-rec-label">{bestTip.league} · {bestTip.market}</div>
                 <div className="ai-rec-tip">{bestTip.selection}</div>
-                {[
-                  { label: 'Prob. real',  val: `${(bestTip.probability * 100).toFixed(0)}%`, fill: Math.round(bestTip.probability * 100), color: 'var(--lime)' },
-                  { label: 'Prob. impl.', val: `${((1 / bestTip.odd) * 100).toFixed(0)}%`,  fill: Math.round((1 / bestTip.odd) * 100),  color: 'var(--muted)' },
-                  { label: 'Confiança',   val: `${bestTip.confidence}%`,                     fill: bestTip.confidence,                    color: 'var(--green)' },
-                ].map(row => (
+                {(() => {
+                  const safeProb = Math.max(0, Math.min(1, bestTip.probability));
+                  return [
+                    { label: 'Prob. real',  val: `${(safeProb * 100).toFixed(0)}%`,             fill: Math.round(safeProb * 100),             color: 'var(--lime)' },
+                    { label: 'Prob. impl.', val: `${((1 / bestTip.odd) * 100).toFixed(0)}%`,    fill: Math.round((1 / bestTip.odd) * 100),    color: 'var(--muted)' },
+                    { label: 'Confiança',   val: `${bestTip.confidence}%`,                       fill: bestTip.confidence,                      color: 'var(--green)' },
+                  ];
+                })().map(row => (
                   <div key={row.label} className="ai-prob-row">
                     <div className="ai-prob-label">{row.label}</div>
                     <div className="ai-prob-track">

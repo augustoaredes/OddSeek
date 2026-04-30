@@ -210,7 +210,10 @@ function buildMarketFromId(
 async function fetchFixtures(apiKey: string, tournamentId: string): Promise<ApiFixture[]> {
   const url = `${API_BASE}/fixtures?apiKey=${apiKey}&tournamentId=${tournamentId}&hasOdds=true`;
   const res = await fetch(url, { next: { revalidate: 0 } });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`[oddspapi] fixtures HTTP ${res.status} for tournament ${tournamentId}`);
+    return [];
+  }
   const data = await res.json();
   return Array.isArray(data) ? data : (data.data ?? []);
 }
@@ -223,10 +226,14 @@ async function fetchOddsForBookmaker(
   const url = `${API_BASE}/odds-by-tournaments?apiKey=${apiKey}&tournamentIds=${tournamentIds}&bookmaker=${slug}&oddsFormat=decimal`;
   try {
     const res = await fetch(url, { next: { revalidate: 0 } });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[oddspapi] odds HTTP ${res.status} for bookmaker ${slug}`);
+      return [];
+    }
     const data = await res.json();
     return Array.isArray(data) ? data : (data.data ?? []);
-  } catch {
+  } catch (err) {
+    console.error(`[oddspapi] odds fetch error for ${slug}:`, err);
     return [];
   }
 }

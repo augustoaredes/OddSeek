@@ -31,15 +31,22 @@ async function getLiveEvents(): Promise<OddsEvent[]> {
   }
 
   try {
-    let events: OddsEvent[];
+    let events: OddsEvent[] = [];
 
     if (oddsPapiKey) {
       events = await fetchAllOddsOddsPapi(oddsPapiKey);
-    } else {
-      events = await fetchAllOdds(theOddsKey!);
+      if (events.length === 0 && theOddsKey) {
+        console.warn('[odds/fetcher] OddsPapi returned 0 events, falling back to The Odds API');
+        events = await fetchAllOdds(theOddsKey);
+      }
+    } else if (theOddsKey) {
+      events = await fetchAllOdds(theOddsKey);
     }
 
-    if (events.length === 0) return MOCK_EVENTS;
+    if (events.length === 0) {
+      console.warn('[odds/fetcher] all APIs returned 0 events, using mock data');
+      return MOCK_EVENTS;
+    }
 
     if (redis) {
       await redis.set(CACHE_KEY, events, { ex: CACHE_TTL });

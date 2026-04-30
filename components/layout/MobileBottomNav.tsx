@@ -5,7 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 
 function isActive(pathname: string, href: string) {
-  return pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
+  // Exact match for root/locale paths to avoid false positives
+  if (!href.includes('/', 1)) return pathname === href;
+  return pathname === href || pathname.startsWith(href + '/');
 }
 
 export function MobileBottomNav() {
@@ -56,14 +58,12 @@ export function MobileBottomNav() {
       ),
     },
     {
-      href: `/${locale}/comunidade`,
-      label: 'Social',
+      href: `/${locale}`,
+      label: 'Início',
       icon: (
         <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
-          <circle cx="5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
-          <circle cx="10" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.3"/>
-          <path d="M1 13c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-          <path d="M10 9c1.7 0 3 1.3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          <path d="M1.5 6.5L7 2l5.5 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M3 5.5V11.5h3V8.5h2v3h3V5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       ),
     },

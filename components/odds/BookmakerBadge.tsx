@@ -1,12 +1,14 @@
-const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
-  Bet365:      { bg: '#00570e', text: '#fff' },
-  Betano:      { bg: '#0a2463', text: '#fff' },
-  Sportingbet: { bg: '#1a1a2e', text: '#e9b84a' },
-  Stake:       { bg: '#213743', text: '#57b3f1' },
-  Pinnacle:    { bg: '#2d2d2d', text: '#f5a623' },
+const BOOK_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
+  'Bet365':      { bg: '#00843D', text: '#fff' },
+  'Betano':      { bg: '#E30613', text: '#fff' },
+  'Sportingbet': { bg: '#1155CC', text: '#fff' },
+  'Pixbet':      { bg: '#0057FF', text: '#fff' },
+  'Superbet':    { bg: '#7B1FA2', text: '#fff' },
+  'Stake':       { bg: '#1B4F72', text: '#3FC3EE' },
+  'Pinnacle':    { bg: '#1A1A1A', text: '#F5A623' },
 };
 
-const DEFAULT_STYLE = { bg: '#232529', text: 'var(--text)' };
+const DEFAULT_STYLE = { bg: '#3A3D45', text: '#fff' };
 
 interface BookmakerBadgeProps {
   book: string;

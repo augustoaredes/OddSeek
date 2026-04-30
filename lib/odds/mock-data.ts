@@ -1,4 +1,3 @@
-import { devigorize } from '@/lib/analytics/probability';
 import { calculateEV } from '@/lib/analytics/ev';
 import type { OddsEvent, OddsListItem, BookOdd, OddsSelection } from './types';
 
@@ -12,10 +11,11 @@ const AFFILIATE_URLS: Record<string, string> = {
   Pinnacle:    'https://www.pinnacle.com/?affid=oddseek_005',
 };
 
-/** Build an OddsSelection from raw odds arrays per book */
+/** Build an OddsSelection from raw odds arrays per book.
+ *  rawOdds: one odd per bookmaker for THIS selection (not the full market).
+ *  Use simple average implied probability — devigorize needs the full market. */
 function buildSelection(label: string, rawOdds: number[]): OddsSelection {
-  const probs = devigorize(rawOdds);
-  const consensusProb = probs.reduce((s, p) => s + p, 0) / probs.length;
+  const consensusProb = rawOdds.reduce((s, o) => s + 1 / o, 0) / rawOdds.length;
 
   let bestOdd = 0;
   let bestBook = BOOKS[0];

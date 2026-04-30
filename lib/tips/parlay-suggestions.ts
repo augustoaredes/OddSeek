@@ -31,8 +31,8 @@ export function buildParlays(tips: Tip[]): SuggestedParlay[] {
     const tipA = topPerEvent[i];
     const tipB = topPerEvent[i + 1];
     const legs: ParlayLeg[] = [
-      { probability: tipA.probability, odd: tipA.odd, eventId: tipA.eventId },
-      { probability: tipB.probability, odd: tipB.odd, eventId: tipB.eventId },
+      { probability: Math.min(tipA.probability, 0.90), odd: tipA.odd, eventId: tipA.eventId },
+      { probability: Math.min(tipB.probability, 0.90), odd: tipB.odd, eventId: tipB.eventId },
     ];
     const analysis = analyzeParlayy(legs);
     if (analysis.riskLevel !== 'blocked') {
@@ -48,9 +48,9 @@ export function buildParlays(tips: Tip[]): SuggestedParlay[] {
   if (topPerEvent.length >= 3) {
     const [a, b, c] = topPerEvent;
     const legs: ParlayLeg[] = [
-      { probability: a.probability, odd: a.odd, eventId: a.eventId },
-      { probability: b.probability, odd: b.odd, eventId: b.eventId },
-      { probability: c.probability, odd: c.odd, eventId: c.eventId },
+      { probability: Math.min(a.probability, 0.90), odd: a.odd, eventId: a.eventId },
+      { probability: Math.min(b.probability, 0.90), odd: b.odd, eventId: b.eventId },
+      { probability: Math.min(c.probability, 0.90), odd: c.odd, eventId: c.eventId },
     ];
     const analysis = analyzeParlayy(legs);
     if (analysis.riskLevel !== 'blocked') {

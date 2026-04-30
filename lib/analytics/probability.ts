@@ -5,6 +5,9 @@
 export function devigorize(odds: number[]): number[] {
   if (odds.length === 0) return [];
 
+  // Single outcome: no margin to remove — return raw implied probability
+  if (odds.length === 1) return [1 / odds[0]];
+
   // Overround: sum of implied probabilities (> 1 due to margin)
   const implied = odds.map((o) => 1 / o);
   const overround = implied.reduce((a, b) => a + b, 0);
@@ -44,7 +47,8 @@ export function consensusProbability(
     });
 
   if (probs.length === 0) return 0;
-  return probs.reduce((a, b) => a + b, 0) / probs.length;
+  const avg = probs.reduce((a, b) => a + b, 0) / probs.length;
+  return Math.max(0, Math.min(1, isFinite(avg) ? avg : 0));
 }
 
 /** Sharpen consensus probability by a kappa factor (pulls toward 0.5 for caution). */

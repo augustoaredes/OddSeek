@@ -26,7 +26,7 @@ export function MarketingNav() {
         justifyContent: 'space-between',
         padding: '0 44px',
         height: 56,
-        background: 'oklch(4% 0 250 / 0.94)',
+        background: 'var(--nav-bg)',
         backdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border)',
       }}
