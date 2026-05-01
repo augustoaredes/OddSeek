@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { DottedSurface } from '@/components/ui/dotted-surface';
+import { FloatingSports } from './FloatingSports';
+import { LiveScoreWidget } from './LiveScoreWidget';
 
 interface Props { locale: string }
 
@@ -26,6 +28,7 @@ export async function Hero({ locale }: Props) {
   return (
     <section className="hero-v2">
       <DottedSurface />
+      <FloatingSports />
       <div style={{
         pointerEvents: 'none', position: 'absolute', inset: 0,
         background: 'radial-gradient(ellipse 70% 45% at 50% 0%, oklch(80% 0.3 115 / 0.10) 0%, transparent 70%)',
@@ -157,6 +160,17 @@ export async function Hero({ locale }: Props) {
               <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-cond)', lineHeight: 1.1 }}>EV +11.8%</div>
               <div style={{ fontSize: 11, color: 'var(--muted)' }}>Flamengo vs Palmeiras</div>
             </div>
+          </div>
+
+          {/* Placar ao vivo animado */}
+          <div style={{
+            position: 'absolute',
+            bottom: -20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+          }}>
+            <LiveScoreWidget />
           </div>
         </div>
       </div>

@@ -159,6 +159,38 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes floatSport {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
+  10%  { opacity: 0.18; }
+  50%  { transform: translateY(-45vh) rotate(120deg) scale(1.1); opacity: 0.12; }
+  90%  { opacity: 0.06; }
+  100% { transform: translateY(-90vh) rotate(240deg) scale(0.9); opacity: 0; }
+}
+
+@keyframes scoreFlip {
+  0%   { opacity: 1; transform: translateY(0); }
+  35%  { opacity: 0; transform: translateY(-8px); }
+  65%  { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes oddsFlicker {
+  0%   { color: inherit; background: transparent; }
+  15%  { color: var(--lime); background: oklch(80% 0.3 115 / 0.12); }
+  70%  { color: var(--lime); background: oklch(80% 0.3 115 / 0.06); }
+  100% { color: inherit; background: transparent; }
+}
+
+@keyframes liveScoreFade {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes activitySlide {
+  0%   { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
 /* ============================================================
    SIGNATURE COMPONENT CLASSES (alta fidelidade aos HTMLs)
    Mantidas como classes customizadas em vez de utilitárias
