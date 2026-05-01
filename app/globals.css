@@ -1624,7 +1624,6 @@ button {
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* Deixa o scroll começar alinhado ao padding da tela */
   scroll-padding-left: 20px;
 }
 .cards-scroll-row::-webkit-scrollbar { display: none; }
@@ -1633,6 +1632,34 @@ button {
   flex-shrink: 0;
   width: 300px;
   scroll-snap-align: start;
+}
+
+/* Parlay grid — lado a lado no desktop, scroll no mobile */
+.parlay-grid {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding-bottom: 4px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.parlay-grid::-webkit-scrollbar { display: none; }
+.parlay-grid .parlay-card-wrap {
+  flex-shrink: 0;
+  width: 300px;
+  scroll-snap-align: start;
+}
+@media (min-width: 768px) {
+  .parlay-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+  .parlay-grid .parlay-card-wrap {
+    width: auto;
+    flex-shrink: unset;
+  }
 }
 
 .tip-card {

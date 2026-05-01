@@ -17,7 +17,16 @@
     "cta_secondary": "Ver ao vivo",
     "pill_ev": "EV+ Identificado",
     "pill_books": "4+ Casas",
-    "pill_live": "Ao vivo"
+    "pill_live": "Ao vivo",
+    "badge": "● Atualizado agora — as odds mudam a cada minuto",
+    "h1_a": "As casas calculam",
+    "h1_b": "cada centavo.",
+    "h1_c": "Agora você também.",
+    "sub_v2": "O OddSeek compara as odds de 10+ casas em tempo real e destaca automaticamente onde existe vantagem matemática — para você só apostar quando o número está do seu lado.",
+    "cta": "Encontrar minhas primeiras oportunidades →",
+    "social_count": "+12.000",
+    "social_text": "apostadores já viram o que as casas não querem que você veja",
+    "email_ph": "seu@email.com"
   },
   "stats": {
     "odds_analyzed": "Odds analisadas/dia",
@@ -26,9 +35,9 @@
     "users": "Apostadores ativos"
   },
   "features": {
-    "tag": "Funcionalidades",
+    "tag": "Sua vantagem",
     "h": "Tudo que você precisa",
-    "h_em": "para apostar melhor.",
+    "h_em": "Precisa do número certo.",
     "sub": "Da análise de odds à gestão completa da banca — tudo integrado em uma só plataforma.",
     "ev_h": "Análise de EV+",
     "ev_p": "Calculamos o valor esperado de cada aposta comparando as odds de todas as casas com a probabilidade real estimada.",
@@ -47,7 +56,36 @@
     "bankroll_tag": "Profissional",
     "community_h": "Comunidade",
     "community_p": "Siga apostadores rentáveis, compartilhe suas apostas e suba no ranking por ROI real.",
-    "community_tag": "Social"
+    "community_tag": "Social",
+    "h_main": "Você não precisa de sorte.",
+    "sub_main": "Apostadores profissionais não adivinham. Eles calculam. O OddSeek entrega esse cálculo pronto para você.",
+    "big1_tag": "Identificação de valor",
+    "big1_h": "Encontre a aposta certa\nantes que ela suma",
+    "big1_p": "Toda aposta tem uma odd \"justa\" — o valor real do que ela deveria pagar. Quando uma casa paga mais do que deveria, isso é lucro potencial. O OddSeek encontra essas distorções em tempo real, antes que as casas corrijam.",
+    "big1_p1": "Valor sugerido",
+    "big1_p2": "Nível de confiança",
+    "big1_p3": "Vantagem calculada",
+    "big2_tag": "Comparador ao vivo",
+    "big2_h": "Veja 10+ casas\nem um lugar só",
+    "big2_p": "Você não precisa abrir 8 abas. O OddSeek compara Bet365, Betano, KTO, Stake, Pinnacle e mais, lado a lado, destacando automaticamente qual paga mais pelo mesmo jogo agora.",
+    "big2_p1": "10+ casas",
+    "big2_p2": "Ao vivo",
+    "big2_p3": "Histórico de odds",
+    "s1_h": "Múltiplas que fazem sentido",
+    "s1_p": "Não são todas as múltiplas que têm vantagem. O OddSeek monta combinações apenas com apostas onde o EV é positivo — e bloqueia automaticamente qualquer seleção que prejudica o conjunto.",
+    "s1_tag": "NOVO",
+    "s2_h": "Velocidade é dinheiro",
+    "s2_p": "Você define o jogo e o mercado. Quando uma odd com vantagem aparecer, você é avisado. Uma diferença de 10 minutos pode ser a diferença entre entrar ou perder a janela.",
+    "s3_h": "Ranking de quem realmente ganha",
+    "s3_p": "Siga apostadores com histórico verificado de lucro, não os que fazem mais barulho. Ranking por ROI real e transparente.",
+    "s4_h": "Acesso direto às melhores casas",
+    "s4_p": "Clique em qualquer oportunidade e vá direto para a casa que está pagando mais. Rastreamos cada clique para você ter relatórios precisos.",
+    "big3_tag": "Gestão de banca",
+    "big3_h": "Saiba quanto apostar\nem cada jogo",
+    "big3_p": "Apostar muito quando a vantagem é pequena é o maior erro de quem perde banca. O OddSeek calcula o valor ideal por jogo com base no seu saldo e no seu perfil de risco — sem planilha, sem matemática na cabeça.",
+    "big3_p1": "Valor por jogo",
+    "big3_p2": "Lucro acumulado",
+    "big3_p3": "Aviso de limite"
   },
   "matches": {
     "tag": "Odds Ao Vivo",
@@ -90,9 +128,9 @@
   },
   "pricing": {
     "tag": "Planos",
-    "h": "Simples e",
-    "h_em": "transparente.",
-    "sub": "Comece gratuitamente. Upgrade quando sentir o valor.",
+    "h": "Uma aposta boa",
+    "h_em": "já paga o mês inteiro.",
+    "sub": "Plano Pro custa R$49/mês. Se o OddSeek te ajudar a encontrar uma única aposta com vantagem real por semana, o investimento se paga na primeira.",
     "free_badge": "Grátis",
     "free_name": "Explorador",
     "free_price": "0",
@@ -108,11 +146,11 @@
     "cta_elite": "Assinar Elite"
   },
   "cta": {
-    "h_1": "Pronto para apostar",
-    "h_2": "com inteligência?",
-    "sub": "Crie sua conta gratuita e comece a identificar apostas com valor positivo agora.",
-    "primary": "Criar conta grátis",
-    "secondary": "Ver demonstração"
+    "h_1": "Enquanto você lê isso,",
+    "h_2": "alguém está entrando na aposta que você perdeu.",
+    "sub": "As odds com vantagem ficam abertas por minutos. O OddSeek mostra quais existem agora — e desaparecem conforme as casas ajustam os números. Quanto antes você entrar, mais você vê.",
+    "primary": "Ver as oportunidades de hoje →",
+    "secondary": "Entrar no demo"
   },
   "footer": {
     "disclaimer": "OddSeek não é uma casa de apostas. Apostas esportivas envolvem risco. Proibido para menores de 18 anos. Análise estatística — sem garantia de resultado.",
@@ -182,5 +220,21 @@
     "lgpd_accept": "Aceitar",
     "lgpd_more": "Saiba mais",
     "disclaimer": "Análise estatística. Sem garantia de resultado."
+  },
+  "social_proof": {
+    "tag": "Resultados verificados",
+    "h": "Apostadores reais.",
+    "h_em": "Lucros que aparecem no extrato.",
+    "sub": "Todo histórico exibido aqui foi registrado dentro da plataforma. Sem print editado, sem promessa de resultado garantido — só dados.",
+    "verified": "Verificado",
+    "last": "nos últimos",
+    "stat1_num": "+R$2.1M",
+    "stat1_lbl": "lucro rastreado na plataforma",
+    "stat2_num": "61%",
+    "stat2_lbl": "hit rate médio usuários Pro",
+    "stat3_num": "+18%",
+    "stat3_lbl": "ROI médio em 90 dias",
+    "stat4_num": "12k+",
+    "stat4_lbl": "apostadores ativos"
   }
 }

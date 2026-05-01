@@ -1,3 +1,5 @@
+import { getTranslations } from 'next-intl/server';
+
 const testimonials = [
   {
     name: 'Mateus A.',
@@ -43,68 +45,59 @@ const StarIcon = () => (
   </svg>
 );
 
-export function SocialProof() {
+export async function SocialProof() {
+  const t = await getTranslations('social_proof');
+
   return (
     <section className="section" id="depoimentos">
       <div className="si">
-        <div className="stag">Resultados verificados</div>
+        <div className="stag">{t('tag')}</div>
         <h2 className="sh">
-          Apostadores reais,<br />
-          <em>lucros reais.</em>
+          {t('h')}<br />
+          <em>{t('h_em')}</em>
         </h2>
-        <p className="sp">
-          Histórico de apostas rastreado e verificado dentro do OddSeek.
-          Sem screenshots editados, sem promessas falsas.
-        </p>
+        <p className="sp">{t('sub')}</p>
 
         <div className="testimonials-grid">
-          {testimonials.map((t) => (
-            <div key={t.name} className="testimonial-card">
-              {/* Stars */}
+          {testimonials.map((tm) => (
+            <div key={tm.name} className="testimonial-card">
               <div className="t-stars">
                 {[...Array(5)].map((_, i) => <StarIcon key={i} />)}
               </div>
-
-              {/* Quote */}
-              <p className="t-quote">{t.text}</p>
-
-              {/* Profit badge */}
+              <p className="t-quote">{tm.text}</p>
               <div className="t-profit-badge">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 10l3-4.5 2 2 3-5 2 3" stroke="var(--lime)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span style={{ color: 'var(--lime)', fontWeight: 800, fontFamily: 'var(--font-cond)' }}>{t.profit}</span>
-                <span style={{ color: 'var(--muted)', fontSize: 11 }}>nos últimos {t.period}</span>
+                <span style={{ color: 'var(--lime)', fontWeight: 800, fontFamily: 'var(--font-cond)' }}>{tm.profit}</span>
+                <span style={{ color: 'var(--muted)', fontSize: 11 }}>{t('last')} {tm.period}</span>
               </div>
-
-              {/* Author */}
               <div className="t-author">
-                <div className="t-avatar" style={{ background: t.avatarBg, color: t.avatarText }}>
-                  {t.avatar}
+                <div className="t-avatar" style={{ background: tm.avatarBg, color: tm.avatarText }}>
+                  {tm.avatar}
                 </div>
                 <div>
-                  <div className="t-name">{t.name}</div>
-                  <div className="t-role">{t.handle} · {t.sport}</div>
+                  <div className="t-name">{tm.name}</div>
+                  <div className="t-role">{tm.handle} · {tm.sport}</div>
                 </div>
                 <div className="t-verified">
                   <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                     <circle cx="6.5" cy="6.5" r="5.5" fill="var(--lime)" />
                     <path d="M3.5 6.5l2 2 4-4" stroke="#000" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span>Verificado</span>
+                  <span>{t('verified')}</span>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Stats row */}
         <div className="sp-stats-row">
           {[
-            { num: '+R$2.1M', label: 'lucro rastreado na plataforma', color: 'var(--lime)' },
-            { num: '61%', label: 'hit rate médio usuários Pro', color: 'var(--green)' },
-            { num: '+18%', label: 'ROI médio em 90 dias', color: 'var(--amber)' },
-            { num: '12k+', label: 'apostadores ativos', color: 'var(--blue)' },
+            { num: t('stat1_num'), label: t('stat1_lbl'), color: 'var(--lime)' },
+            { num: t('stat2_num'), label: t('stat2_lbl'), color: 'var(--green)' },
+            { num: t('stat3_num'), label: t('stat3_lbl'), color: 'var(--amber)' },
+            { num: t('stat4_num'), label: t('stat4_lbl'), color: 'var(--blue)' },
           ].map((s) => (
             <div key={s.label} className="sp-stat">
               <div className="sp-stat-num" style={{ color: s.color }}>{s.num}</div>

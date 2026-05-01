@@ -1,14 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-
-const OddSeekMark = dynamic(
-  () => import('@/components/brand/OddSeekMark').then((m) => ({ default: m.OddSeekMark })),
-  { ssr: false }
-);
+import { signOut } from 'next-auth/react';
+import { OddSeekMark } from '@/components/brand/OddSeekMark';
 
 interface NavItem {
   href: string;
@@ -215,17 +211,10 @@ export function AppSidebar() {
         <Link
           href={`/${locale}`}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            padding: '7px 10px',
-            borderRadius: 7,
-            marginBottom: 8,
-            fontSize: 12,
-            fontWeight: 600,
-            color: 'var(--muted)',
-            textDecoration: 'none',
-            transition: 'color 0.15s',
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '7px 10px', borderRadius: 7, marginBottom: 4,
+            fontSize: 12, fontWeight: 600, color: 'var(--muted)',
+            textDecoration: 'none', transition: 'color 0.15s',
           }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
@@ -236,6 +225,27 @@ export function AppSidebar() {
           </svg>
           Página Inicial
         </Link>
+
+        <button
+          onClick={() => signOut({ callbackUrl: `/${locale}` })}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '7px 10px', borderRadius: 7, marginBottom: 8,
+            fontSize: 12, fontWeight: 600, color: 'var(--muted)',
+            background: 'none', border: 'none', cursor: 'pointer',
+            width: '100%', textAlign: 'left', transition: 'color 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--red)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M5 2H2a1 1 0 00-1 1v7a1 1 0 001 1h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            <path d="M8.5 9l3-2.5L8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="11" y1="6.5" x2="4.5" y2="6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          Sair da conta
+        </button>
+
         <div className="user-row">
           <div className="avatar">U</div>
           <div>

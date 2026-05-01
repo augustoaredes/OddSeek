@@ -17,7 +17,16 @@
     "cta_secondary": "Watch live",
     "pill_ev": "EV+ Identified",
     "pill_books": "4+ Bookmakers",
-    "pill_live": "Live"
+    "pill_live": "Live",
+    "badge": "● Updated now — odds change every minute",
+    "h1_a": "The bookmakers calculate",
+    "h1_b": "every penny.",
+    "h1_c": "Now you can too.",
+    "sub_v2": "OddSeek compares odds from 10+ bookmakers in real time and automatically highlights where the mathematical edge exists — so you only bet when the numbers are on your side.",
+    "cta": "Find my first opportunities →",
+    "social_count": "+12,000",
+    "social_text": "bettors already see what the bookmakers don't want you to know",
+    "email_ph": "your@email.com"
   },
   "stats": {
     "odds_analyzed": "Odds analyzed/day",
@@ -26,9 +35,9 @@
     "users": "Active bettors"
   },
   "features": {
-    "tag": "Features",
+    "tag": "Your edge",
     "h": "Everything you need",
-    "h_em": "to bet smarter.",
+    "h_em": "You need the right number.",
     "sub": "From odds analysis to full bankroll management — all integrated in one platform.",
     "ev_h": "EV+ Analysis",
     "ev_p": "We calculate the expected value of each bet by comparing odds from all bookmakers against the estimated true probability.",
@@ -47,7 +56,36 @@
     "bankroll_tag": "Professional",
     "community_h": "Community",
     "community_p": "Follow profitable bettors, share your bets, and climb the leaderboard ranked by real ROI.",
-    "community_tag": "Social"
+    "community_tag": "Social",
+    "h_main": "You don't need luck.",
+    "sub_main": "Professional bettors don't guess. They calculate. OddSeek delivers that calculation ready for you.",
+    "big1_tag": "Value identification",
+    "big1_h": "Find the right bet\nbefore it disappears",
+    "big1_p": "Every bet has a \"fair\" odd — the true value it should pay. When a bookmaker pays more than it should, that's potential profit. OddSeek finds these inefficiencies in real time, before the bookmakers correct them.",
+    "big1_p1": "Suggested stake",
+    "big1_p2": "Confidence level",
+    "big1_p3": "Calculated edge",
+    "big2_tag": "Live comparator",
+    "big2_h": "See 10+ bookmakers\nin one place",
+    "big2_p": "No need to open 8 tabs. OddSeek compares Bet365, Betano, KTO, Stake, Pinnacle and more, side by side, automatically highlighting which pays the most for the same game right now.",
+    "big2_p1": "10+ bookmakers",
+    "big2_p2": "Live",
+    "big2_p3": "Odds history",
+    "s1_h": "Parlays that actually make sense",
+    "s1_p": "Not all parlays have a positive edge. OddSeek only builds combinations with positive EV bets — and automatically blocks any selection that hurts the overall expected value.",
+    "s1_tag": "NEW",
+    "s2_h": "Speed is money",
+    "s2_p": "You set the game and market. When an edge opportunity appears, you're notified. Ten minutes can be the difference between getting in or missing the window.",
+    "s3_h": "Ranking of who actually wins",
+    "s3_p": "Follow bettors with verified profit history, not the loudest voices. Ranked by real, transparent ROI.",
+    "s4_h": "Direct access to the best bookmakers",
+    "s4_p": "Click any opportunity and go straight to the bookmaker paying the most. We track every click so you have accurate reports.",
+    "big3_tag": "Bankroll management",
+    "big3_h": "Know how much to bet\non each game",
+    "big3_p": "Betting too much when the edge is small is the biggest mistake that destroys bankrolls. OddSeek calculates the ideal stake per game based on your balance and risk profile — no spreadsheet, no math in your head.",
+    "big3_p1": "Stake per game",
+    "big3_p2": "Cumulative profit",
+    "big3_p3": "Limit alert"
   },
   "matches": {
     "tag": "Live Odds",
@@ -90,9 +128,9 @@
   },
   "pricing": {
     "tag": "Pricing",
-    "h": "Simple and",
-    "h_em": "transparent.",
-    "sub": "Start for free. Upgrade when you feel the value.",
+    "h": "One good bet",
+    "h_em": "pays for the whole month.",
+    "sub": "Pro plan costs R$49/month. If OddSeek helps you find just one bet with a real edge per week, the investment pays for itself on the first one.",
     "free_badge": "Free",
     "free_name": "Explorer",
     "free_price": "0",
@@ -108,11 +146,11 @@
     "cta_elite": "Subscribe to Elite"
   },
   "cta": {
-    "h_1": "Ready to bet",
-    "h_2": "with intelligence?",
-    "sub": "Create your free account and start finding positive expected value bets today.",
-    "primary": "Create free account",
-    "secondary": "Watch demo"
+    "h_1": "While you're reading this,",
+    "h_2": "someone is placing the bet you missed.",
+    "sub": "Edge opportunities stay open for minutes. OddSeek shows which ones exist right now — and they disappear as bookmakers adjust their numbers. The sooner you start, the more you see.",
+    "primary": "See today's opportunities →",
+    "secondary": "Try the demo"
   },
   "footer": {
     "disclaimer": "OddSeek is not a bookmaker. Sports betting involves risk. Prohibited for users under 18. Statistical analysis — no guarantee of results.",
@@ -182,5 +220,21 @@
     "lgpd_accept": "Accept",
     "lgpd_more": "Learn more",
     "disclaimer": "Statistical analysis. No guarantee of results."
+  },
+  "social_proof": {
+    "tag": "Verified results",
+    "h": "Real bettors.",
+    "h_em": "Profits that show up in their account.",
+    "sub": "All history shown here was recorded inside the platform. No edited screenshots, no guaranteed profit promises — just data.",
+    "verified": "Verified",
+    "last": "in the last",
+    "stat1_num": "+$400k",
+    "stat1_lbl": "tracked profit on the platform",
+    "stat2_num": "61%",
+    "stat2_lbl": "average hit rate Pro users",
+    "stat3_num": "+18%",
+    "stat3_lbl": "average ROI over 90 days",
+    "stat4_num": "12k+",
+    "stat4_lbl": "active bettors"
   }
 }

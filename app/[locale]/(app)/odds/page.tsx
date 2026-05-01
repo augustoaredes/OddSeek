@@ -24,19 +24,26 @@ const SPORT_LABELS: Record<string, string> = {
 };
 
 interface Props {
-  searchParams: Promise<{ sport?: string; filter?: string }>;
+  searchParams: Promise<{ sport?: string; filter?: string; league?: string }>;
 }
 
 export default async function OddsPage({ searchParams }: Props) {
-  const locale = await getLocale();
-  const sp     = await searchParams;
-  const sport  = sp.sport  ?? 'all';
-  const filter = sp.filter ?? '';
+  const locale  = await getLocale();
+  const sp      = await searchParams;
+  const sport   = sp.sport  ?? 'all';
+  const filter  = sp.filter ?? '';
+  const league  = sp.league ?? 'all';
 
   const allEvents = await getEvents();
 
   // Apply sport filter
   let events = sport === 'all' ? allEvents : allEvents.filter(e => e.sport === sport);
+
+  // Unique leagues for current sport (for filter pills)
+  const leagues = ['all', ...Array.from(new Set(events.map(e => e.league))).sort()];
+
+  // Apply league filter
+  if (league !== 'all') events = events.filter(e => e.league === league);
 
   // Apply status/ev filter
   if (filter === 'live')      events = events.filter(e => e.status === 'live');
@@ -66,20 +73,28 @@ export default async function OddsPage({ searchParams }: Props) {
   const evColor = (ev: number) =>
     ev >= 0.10 ? 'var(--lime)' : ev >= 0.05 ? 'var(--green)' : ev > 0 ? 'var(--amber)' : 'var(--muted)';
 
-  function tabHref(newSport: string) {
+  function buildOddsHref(patch: { sport?: string; filter?: string; league?: string }) {
     const p = new URLSearchParams();
-    if (newSport !== 'all') p.set('sport', newSport);
-    if (filter) p.set('filter', filter);
+    const s = patch.sport  ?? sport;
+    const f = patch.filter ?? filter;
+    const l = patch.league ?? league;
+    if (s !== 'all') p.set('sport',  s);
+    if (f)           p.set('filter', f);
+    if (l !== 'all') p.set('league', l);
     const q = p.toString();
     return `/${locale}/odds${q ? `?${q}` : ''}`;
   }
 
+  function tabHref(newSport: string) {
+    return buildOddsHref({ sport: newSport, league: 'all' });
+  }
+
   function filterHref(newFilter: string) {
-    const p = new URLSearchParams();
-    if (sport !== 'all') p.set('sport', sport);
-    if (newFilter && newFilter !== filter) p.set('filter', newFilter);
-    const q = p.toString();
-    return `/${locale}/odds${q ? `?${q}` : ''}`;
+    return buildOddsHref({ filter: newFilter === filter ? '' : newFilter });
+  }
+
+  function leagueHref(newLeague: string) {
+    return buildOddsHref({ league: newLeague });
   }
 
   function EventSection({ list, title, live }: { list: typeof events; title: string; live?: boolean }) {
@@ -223,26 +238,42 @@ export default async function OddsPage({ searchParams }: Props) {
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* Sport tabs */}
-        <Link href={tabHref('all')} className={`f-tab${sport === 'all' ? ' on' : ''}`}>Todos</Link>
-        {(['football', 'basketball', 'tennis', 'mma'] as Sport[]).map(s => (
-          <Link key={s} href={tabHref(s)} className={`f-tab${sport === s ? ' on' : ''}`}>
-            {SPORT_ICONS[s]} {SPORT_LABELS[s]}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Linha 1: esporte + status */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link href={tabHref('all')} className={`f-tab${sport === 'all' ? ' on' : ''}`}>Todos</Link>
+          {(['football', 'basketball', 'tennis', 'mma'] as Sport[]).map(s => (
+            <Link key={s} href={tabHref(s)} className={`f-tab${sport === s ? ' on' : ''}`}>
+              {SPORT_ICONS[s]} {SPORT_LABELS[s]}
+            </Link>
+          ))}
+          <span className="f-sep" />
+          <Link href={filterHref('live')} className={`f-tab${filter === 'live' ? ' on' : ''}`}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
+            Ao vivo
           </Link>
-        ))}
-        <span className="f-sep" />
-        {/* Status / special filters */}
-        <Link href={filterHref(filter === 'live' ? '' : 'live')} className={`f-tab${filter === 'live' ? ' on' : ''}`}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
-          Ao vivo
-        </Link>
-        <Link href={filterHref(filter === 'scheduled' ? '' : 'scheduled')} className={`f-tab${filter === 'scheduled' ? ' on' : ''}`}>
-          Agendados
-        </Link>
-        <Link href={filterHref(filter === 'ev' ? '' : 'ev')} className={`f-tab ev-tab${filter === 'ev' ? ' on' : ''}`}>
-          EV+
-        </Link>
+          <Link href={filterHref('scheduled')} className={`f-tab${filter === 'scheduled' ? ' on' : ''}`}>Agendados</Link>
+          <Link href={filterHref('ev')} className={`f-tab ev-tab${filter === 'ev' ? ' on' : ''}`}>EV+</Link>
+        </div>
+
+        {/* Linha 2: campeonato/liga */}
+        {leagues.length > 2 && (
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
+            {leagues.map(lg => (
+              <Link key={lg} href={leagueHref(lg)}
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
+                  background: league === lg ? 'var(--lime)' : 'var(--s2)',
+                  border: `1px solid ${league === lg ? 'var(--lime)' : 'var(--border)'}`,
+                  color: league === lg ? '#000' : 'var(--muted)',
+                  textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+                  transition: 'all .15s',
+                }}>
+                {lg === 'all' ? 'Todos campeonatos' : lg}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main content */}

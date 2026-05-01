@@ -18,10 +18,11 @@ export function Tooltip({ content, children }: TooltipProps) {
     >
       {children}
       <span style={{
-        width: 13, height: 13, borderRadius: '50%',
-        background: 'var(--dim)', color: 'var(--muted)',
+        width: 14, height: 14, borderRadius: '50%',
+        background: 'var(--bd2)', color: 'var(--text)',
         fontSize: 9, fontWeight: 800, display: 'inline-flex',
         alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        cursor: 'help',
       }}>?</span>
       {open && (
         <span style={{

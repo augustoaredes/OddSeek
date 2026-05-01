@@ -44,14 +44,28 @@ const SPORT_FILTERS = [
   { value: 'mma',        label: 'MMA',      icon: '🥊', dot: '#f87171' },
 ];
 
-const staticOdds = [
-  { house: 'Bet365',            fill: 100, val: '2.10', best: true,  ev: '+8.2%' },
-  { house: 'Betano',            fill: 93,  val: '1.95', best: false, ev: null },
-  { house: 'Sportingbet',       fill: 90,  val: '1.92', best: false, ev: null },
-  { house: 'Superbet',          fill: 87,  val: '1.90', best: false, ev: null },
-  { house: 'Pixbet',            fill: 85,  val: '1.88', best: false, ev: null },
-  { house: 'Esportes da Sorte', fill: 83,  val: '1.85', best: false, ev: null },
+// Static odds comparison — EVs calculados com prob. implícita da melhor odd (2.10 → prob ~0.62 devigorizada)
+const COMPARE_PROB = 0.62;
+const compareOdds = [
+  { house: 'Bet365',            odd: 2.10 },
+  { house: 'Betano',            odd: 1.95 },
+  { house: 'Sportingbet',       odd: 1.92 },
+  { house: 'Superbet',          odd: 1.90 },
+  { house: 'Pixbet',            odd: 1.88 },
+  { house: 'Esportes da Sorte', odd: 1.85 },
 ];
+const maxOdd = Math.max(...compareOdds.map(r => r.odd));
+const staticOdds = compareOdds.map(r => {
+  const ev = COMPARE_PROB * r.odd - 1;
+  return {
+    house: r.house,
+    fill: Math.round((r.odd / maxOdd) * 100),
+    val: r.odd.toFixed(2),
+    best: r.odd === maxOdd,
+    ev: ev > 0 ? `+${(ev * 100).toFixed(1)}%` : `${(ev * 100).toFixed(1)}%`,
+    evPositive: ev > 0,
+  };
+});
 
 const staticAlerts = [
   { msg: 'Odd subiu para melhor nível nas últimas 2h',    time: '2m',  color: 'var(--green)' },
@@ -63,14 +77,20 @@ const staticAlerts = [
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sport?: string }>;
+  searchParams: Promise<{ sport?: string; league?: string }>;
 }) {
-  const locale      = await getLocale();
-  const sp          = await searchParams;
-  const sportFilter = sp.sport ?? 'all';
+  const locale       = await getLocale();
+  const sp           = await searchParams;
+  const sportFilter  = sp.sport  ?? 'all';
+  const leagueFilter = sp.league ?? 'all';
 
   const allTips = await getTips();
-  const tips    = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
+  let tips = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
+  if (leagueFilter !== 'all') tips = tips.filter(t => t.league === leagueFilter);
+
+  // Unique leagues for current sport selection
+  const sportBase = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
+  const leagues = ['all', ...Array.from(new Set(sportBase.map(t => t.league))).sort()];
 
   const positiveEV = allTips.filter(t => sanitizeEV(t.ev) > 0);
   const elite      = allTips.filter(t => t.confidenceBand === 'elite');
@@ -82,8 +102,47 @@ export default async function DashboardPage({
 
   const displayTips = tips.slice(0, 12);
 
+  // Build href helper for filters
+  function dashHref(patch: Record<string, string>) {
+    const p = new URLSearchParams();
+    const s = patch.sport  ?? sportFilter;
+    const l = patch.league ?? leagueFilter;
+    if (s !== 'all') p.set('sport', s);
+    if (l !== 'all') p.set('league', l);
+    const q = p.toString();
+    return `/${locale}/dashboard${q ? `?${q}` : ''}`;
+  }
+
+  // Live tips count and high-EV count for the banner
+  const liveCount  = Math.min(allTips.length, 3);
+  const highEVTips = allTips.filter(t => sanitizeEV(t.ev) >= 0.08);
+
   return (
     <div className="page-full">
+
+      {/* ── Faixa de oportunidades ao vivo ── */}
+      {liveCount > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 20px',
+          background: 'oklch(80% 0.3 115 / 0.07)',
+          borderBottom: '1px solid oklch(80% 0.3 115 / 0.25)',
+          gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--lime)', flexShrink: 0, animation: 'breathe 2s ease-in-out infinite' }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--lime)', fontFamily: 'var(--font-cond)', letterSpacing: '0.04em' }}>
+              {highEVTips.length > 0
+                ? `${highEVTips.length} oportunidade${highEVTips.length > 1 ? 's' : ''} com EV > 8% detectada${highEVTips.length > 1 ? 's' : ''} agora`
+                : `${liveCount} aposta${liveCount > 1 ? 's' : ''} ao vivo disponível${liveCount > 1 ? 'is' : ''}`}
+            </span>
+          </div>
+          <Link href={`/${locale}/tips?filter=elite`}
+            style={{ fontSize: 11, fontWeight: 800, color: 'var(--lime)', textDecoration: 'none', whiteSpace: 'nowrap', opacity: 0.85 }}>
+            Ver todas →
+          </Link>
+        </div>
+      )}
 
       {/* ── Stat cards ── */}
       <div className="stat-cards">
@@ -112,29 +171,44 @@ export default async function DashboardPage({
       </div>
 
       {/* ── Filter bar ── */}
-      <div className="filter-bar" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', marginLeft: 0 }}>
-        <div style={{ display: 'flex', gap: 6, padding: '0 0', overflowX: 'auto' }}>
-          {SPORT_FILTERS.map(f => {
-            const href = f.value === 'all'
-              ? `/${locale}/dashboard`
-              : `/${locale}/dashboard?sport=${f.value}`;
-            return (
-              <Link key={f.value} href={href}
-                className={`f-tab${sportFilter === f.value ? ' on' : ''}`}>
-                {f.icon && <span style={{ fontSize: 12 }}>{f.icon}</span>}
-                {f.label}
-              </Link>
-            );
-          })}
+      <div className="filter-bar" style={{ padding: '10px 0 0', borderBottom: '1px solid var(--border)', marginLeft: 0 }}>
+        {/* Linha 1: esporte */}
+        <div style={{ display: 'flex', gap: 6, padding: '0 0 8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {SPORT_FILTERS.map(f => (
+            <Link key={f.value} href={dashHref({ sport: f.value, league: 'all' })}
+              className={`f-tab${sportFilter === f.value ? ' on' : ''}`}>
+              {f.icon && <span style={{ fontSize: 12 }}>{f.icon}</span>}
+              {f.label}
+            </Link>
+          ))}
           <span className="f-sep" />
           <Link href={`/${locale}/tips?filter=elite`} className="f-tab ev-tab">
             EV+
           </Link>
           <span style={{ marginLeft: 'auto', paddingRight: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--red)', fontFamily: 'var(--font-cond)', fontWeight: 700 }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
-            14 ao vivo
+            ao vivo
           </span>
         </div>
+
+        {/* Linha 2: campeonato/liga (só aparece se há mais de um) */}
+        {leagues.length > 2 && (
+          <div style={{ display: 'flex', gap: 6, padding: '0 0 10px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {leagues.map(lg => (
+              <Link key={lg} href={dashHref({ league: lg })}
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                  background: leagueFilter === lg ? 'var(--lime)' : 'var(--s2)',
+                  border: `1px solid ${leagueFilter === lg ? 'var(--lime)' : 'var(--border)'}`,
+                  color: leagueFilter === lg ? '#000' : 'var(--muted)',
+                  textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+                  transition: 'all .15s',
+                }}>
+                {lg === 'all' ? 'Todos' : lg}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Events table + right panel ── */}
@@ -313,6 +387,22 @@ export default async function DashboardPage({
           {/* Odds comparison */}
           <div className="rp-block">
             <div className="rp-title">Comparação de odds</div>
+            {/* Contexto: qual jogo/seleção está sendo comparado */}
+            {bestTip && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 10px', borderRadius: 6, marginBottom: 8,
+                background: 'var(--s2)', border: '1px solid var(--border)',
+              }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {bestTip.league}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--dim)' }}>·</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-cond)' }}>
+                  {bestTip.selection}
+                </span>
+              </div>
+            )}
             {staticOdds.map(row => (
               <div key={row.house} className="oc-row">
                 <div className="oc-house">{row.house}</div>
@@ -320,10 +410,12 @@ export default async function DashboardPage({
                   <div className={`oc-bar${row.best ? ' best-bar' : ''}`} style={{ width: `${row.fill}%` }} />
                 </div>
                 <div className="oc-val" style={{ color: row.best ? 'var(--lime)' : 'var(--text)' }}>{row.val}</div>
-                {row.ev
-                  ? <div className="oc-ev best-ev">{row.ev}</div>
-                  : <div className="oc-ev" />
-                }
+                <div className="oc-ev" style={{
+                  color: row.best ? 'var(--lime)' : row.evPositive ? 'var(--green)' : 'var(--dim)',
+                  fontWeight: row.best ? 800 : 500,
+                }}>
+                  {row.ev}
+                </div>
               </div>
             ))}
           </div>

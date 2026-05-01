@@ -2,18 +2,15 @@ import { getTranslations } from 'next-intl/server';
 
 const EVMockup = () => (
   <div className="feat-mockup">
-    {/* Header */}
     <div className="fm-header">
       <div className="fm-title">Tips EV+</div>
       <div className="fm-badge">23 oportunidades</div>
     </div>
-    {/* Filter pills */}
     <div className="fm-filters">
       {['Todos', 'Futebol', 'Basquete', 'Tênis'].map((f, i) => (
         <div key={f} className={`fm-filter${i === 0 ? ' active' : ''}`}>{f}</div>
       ))}
     </div>
-    {/* Rows */}
     {[
       { match: 'Real Madrid vs PSG', market: 'Resultado', odd: '2.10', ev: '+8.2%', conf: 92 },
       { match: 'Man City vs Arsenal', market: 'Ambas Marcam', odd: '1.85', ev: '+5.7%', conf: 78 },
@@ -118,9 +115,9 @@ export async function FeaturesGrid() {
           <path d="M5 9h8M9 5v8" stroke="var(--lime)" strokeWidth="1.3" strokeLinecap="round" />
         </svg>
       ),
-      h: 'Parlay Inteligente',
-      p: 'Monte apostas combinadas com as melhores oportunidades do dia — o sistema seleciona as mais vantajosas para você.',
-      tag: 'NOVO',
+      h: t('s1_h'),
+      p: t('s1_p'),
+      tag: t('s1_tag'),
     },
     {
       icon: (
@@ -129,8 +126,8 @@ export async function FeaturesGrid() {
           <path d="M9 4v5l3 2" stroke="var(--lime)" strokeWidth="1.3" strokeLinecap="round" />
         </svg>
       ),
-      h: 'Alertas em tempo real',
-      p: 'Você define o que quer acompanhar e a gente avisa quando surgir uma boa oportunidade.',
+      h: t('s2_h'),
+      p: t('s2_p'),
     },
     {
       icon: (
@@ -138,8 +135,8 @@ export async function FeaturesGrid() {
           <path d="M9 2l1.7 4.7H15L11.2 9.6l1.6 4.9L9 11.8l-3.8 2.7 1.6-4.9L3 6.7h4.3z" stroke="var(--lime)" strokeWidth="1.3" strokeLinejoin="round" />
         </svg>
       ),
-      h: 'Ranking da comunidade',
-      p: 'Compare seu desempenho com outros apostadores. Histórico verificado e transparente.',
+      h: t('s3_h'),
+      p: t('s3_p'),
     },
     {
       icon: (
@@ -148,8 +145,8 @@ export async function FeaturesGrid() {
           <rect x="6.5" y="10" width="5" height="5" rx="1" stroke="var(--lime)" strokeWidth="1.2" />
         </svg>
       ),
-      h: 'Afiliados integrados',
-      p: 'Direto para a melhor casa com seu link de afiliado. Rastreamos cada clique para relatórios precisos.',
+      h: t('s4_h'),
+      p: t('s4_p'),
     },
   ];
 
@@ -158,29 +155,25 @@ export async function FeaturesGrid() {
       <div className="si">
         <div className="stag">{t('tag')}</div>
         <h2 className="sh">
-          Tudo que você precisa<br />
-          <em>para apostar melhor</em>
+          {t('h_main')}<br />
+          <em>{t('h_em')}</em>
         </h2>
-        <p className="sp">
-          Ferramentas que profissionais usam há anos, agora disponíveis para qualquer apostador
-          — sem precisar de curso ou planilha.
-        </p>
+        <p className="sp">{t('sub_main')}</p>
 
         {/* Big feature cards */}
         <div className="feat-big-grid">
           {/* EV+ Card */}
           <div className="feat-big-card">
             <div className="feat-big-body">
-              <div className="feat-big-tag">Identificação de valor</div>
-              <h3 className="feat-big-h">Apostas que valem<br />a pena, ao vivo</h3>
-              <p className="feat-big-p">
-                Comparamos as probabilidades reais de cada jogo com o que as casas estão pagando.
-                Quando encontramos uma odd maior que o risco real, marcamos como oportunidade.
-              </p>
+              <div className="feat-big-tag">{t('big1_tag')}</div>
+              <h3 className="feat-big-h">{t('big1_h').split('\n').map((line, i) => (
+                i === 0 ? <span key={i}>{line}<br /></span> : <span key={i}>{line}</span>
+              ))}</h3>
+              <p className="feat-big-p">{t('big1_p')}</p>
               <div className="feat-big-pills">
-                <div className="feat-big-pill">Valor sugerido</div>
-                <div className="feat-big-pill">Nível de confiança</div>
-                <div className="feat-big-pill">Vantagem calculada</div>
+                <div className="feat-big-pill">{t('big1_p1')}</div>
+                <div className="feat-big-pill">{t('big1_p2')}</div>
+                <div className="feat-big-pill">{t('big1_p3')}</div>
               </div>
             </div>
             <div className="feat-big-mockup-wrap">
@@ -192,17 +185,16 @@ export async function FeaturesGrid() {
           <div className="feat-big-card feat-big-card-alt">
             <div className="feat-big-body">
               <div className="feat-big-tag" style={{ color: 'var(--green)', borderColor: 'oklch(65% 0.2 150 / 0.25)', background: 'oklch(65% 0.2 150 / 0.08)' }}>
-                Comparação de odds
+                {t('big2_tag')}
               </div>
-              <h3 className="feat-big-h">Melhor odd em<br />10+ casas</h3>
-              <p className="feat-big-p">
-                Comparamos Bet365, Betano, KTO, Stake, 1xBet e mais.
-                Destacamos automaticamente a casa que está pagando mais pelo mesmo jogo.
-              </p>
+              <h3 className="feat-big-h">{t('big2_h').split('\n').map((line, i) => (
+                i === 0 ? <span key={i}>{line}<br /></span> : <span key={i}>{line}</span>
+              ))}</h3>
+              <p className="feat-big-p">{t('big2_p')}</p>
               <div className="feat-big-pills">
-                <div className="feat-big-pill" style={{ color: 'var(--green)', background: 'oklch(65% 0.2 150 / 0.08)', borderColor: 'oklch(65% 0.2 150 / 0.2)' }}>10+ casas</div>
-                <div className="feat-big-pill" style={{ color: 'var(--green)', background: 'oklch(65% 0.2 150 / 0.08)', borderColor: 'oklch(65% 0.2 150 / 0.2)' }}>Ao vivo</div>
-                <div className="feat-big-pill" style={{ color: 'var(--green)', background: 'oklch(65% 0.2 150 / 0.08)', borderColor: 'oklch(65% 0.2 150 / 0.2)' }}>Histórico de odds</div>
+                <div className="feat-big-pill" style={{ color: 'var(--green)', background: 'oklch(65% 0.2 150 / 0.08)', borderColor: 'oklch(65% 0.2 150 / 0.2)' }}>{t('big2_p1')}</div>
+                <div className="feat-big-pill" style={{ color: 'var(--green)', background: 'oklch(65% 0.2 150 / 0.08)', borderColor: 'oklch(65% 0.2 150 / 0.2)' }}>{t('big2_p2')}</div>
+                <div className="feat-big-pill" style={{ color: 'var(--green)', background: 'oklch(65% 0.2 150 / 0.08)', borderColor: 'oklch(65% 0.2 150 / 0.2)' }}>{t('big2_p3')}</div>
               </div>
             </div>
             <div className="feat-big-mockup-wrap">
@@ -214,17 +206,16 @@ export async function FeaturesGrid() {
           <div className="feat-big-card feat-big-card-wide">
             <div className="feat-big-body">
               <div className="feat-big-tag" style={{ color: 'var(--amber)', borderColor: 'oklch(75% 0.16 75 / 0.3)', background: 'oklch(75% 0.16 75 / 0.08)' }}>
-                Gestão de banca
+                {t('big3_tag')}
               </div>
-              <h3 className="feat-big-h">Controle seu dinheiro<br />como um profissional</h3>
-              <p className="feat-big-p">
-                Diga quanto você tem para apostar e qual o seu perfil de risco. O OddSeek
-                calcula automaticamente quanto colocar em cada jogo e avisa quando é hora de parar.
-              </p>
+              <h3 className="feat-big-h">{t('big3_h').split('\n').map((line, i) => (
+                i === 0 ? <span key={i}>{line}<br /></span> : <span key={i}>{line}</span>
+              ))}</h3>
+              <p className="feat-big-p">{t('big3_p')}</p>
               <div className="feat-big-pills">
-                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Valor por jogo</div>
-                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Lucro acumulado</div>
-                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>Aviso de limite</div>
+                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>{t('big3_p1')}</div>
+                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>{t('big3_p2')}</div>
+                <div className="feat-big-pill" style={{ color: 'var(--amber)', background: 'oklch(75% 0.16 75 / 0.08)', borderColor: 'oklch(75% 0.16 75 / 0.25)' }}>{t('big3_p3')}</div>
               </div>
             </div>
             <div className="feat-big-mockup-wrap">

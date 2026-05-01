@@ -74,6 +74,14 @@ export const MOCK_TIPS: Tip[] = [
           'Resultado Final', 'Empate',       'Pinnacle',  3.42, 0.24),
   makeTip('tip-012', 'evt-lakers-celtics','basketball','NBA',              'Lakers vs Celtics',
           'Total Pontos',    'Menos de 218.5','Stake',   1.95, 0.52),
+  makeTip('tip-013', 'evt-rm-psg',        'football', 'Champions League', 'Real Madrid vs PSG',
+          'Cantos',          'Mais de 9.5',  'Bet365',  1.90, 0.60),
+  makeTip('tip-014', 'evt-flam-palmeiras','football',  'Brasileirão A',   'Flamengo vs Palmeiras',
+          'Cantos',          'Menos de 10.5','Betano',  1.85, 0.62),
+  makeTip('tip-015', 'evt-mancity-arsenal','football', 'Premier League',  'Man City vs Arsenal',
+          'Cantos 1ª Metade','Mais de 4.5',  'Pinnacle',2.10, 0.57),
+  makeTip('tip-016', 'evt-rm-psg',        'football', 'Champions League', 'Real Madrid vs PSG',
+          'Cantos',          'Real Madrid',  'Stake',   2.25, 0.55),
 ];
 
 /** Filter tips by EV band and sport */

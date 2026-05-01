@@ -11,11 +11,14 @@ import { MOCK_TIPS } from './mock-data';
 import type { Tip, ConfidenceBand } from './mock-data';
 
 const MARKET_LABELS: Record<string, string> = {
-  match_winner:  'Resultado Final',
-  over_under:    'Total de Gols/Pontos',
-  handicap:      'Handicap Asiático',
-  btts:          'Ambas Marcam',
-  double_chance: 'Dupla Hipótese',
+  match_winner:    'Resultado Final',
+  over_under:      'Total de Gols/Pontos',
+  handicap:        'Handicap Asiático',
+  btts:            'Ambas Marcam',
+  double_chance:   'Dupla Hipótese',
+  corners:         'Cantos',
+  corner_handicap: 'Handicap de Cantos',
+  corners_1h:      'Cantos 1ª Metade',
 };
 
 const SPORT_ICONS: Record<string, string> = {

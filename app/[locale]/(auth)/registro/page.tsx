@@ -29,7 +29,9 @@ export default async function RegisterPage({ params, searchParams }: Props) {
           Criar conta grátis
         </h1>
         <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-          14 dias com acesso completo · sem cartão agora
+          {defaultPlan === 'free'
+            ? 'Grátis para sempre · sem cartão necessário'
+            : 'Cancele a qualquer momento · sem contrato'}
         </p>
       </div>
 

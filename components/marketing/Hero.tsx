@@ -25,13 +25,9 @@ export async function Hero({ locale }: Props) {
 
   return (
     <section className="hero-v2">
-      {/* Animated dotted grid background — Three.js, lime palette */}
       <DottedSurface />
-      {/* Lime radial glow at top-center to blend dots with content */}
       <div style={{
-        pointerEvents: 'none',
-        position: 'absolute',
-        inset: 0,
+        pointerEvents: 'none', position: 'absolute', inset: 0,
         background: 'radial-gradient(ellipse 70% 45% at 50% 0%, oklch(80% 0.3 115 / 0.10) 0%, transparent 70%)',
         zIndex: 0,
       }} />
@@ -41,33 +37,30 @@ export async function Hero({ locale }: Props) {
         {/* Badge pill */}
         <div className="hero-v2-badge">
           <span className="hero-v2-badge-dot" />
-          Atualizado em tempo real · 10+ casas de apostas
+          {t('badge')}
         </div>
 
         {/* Headline */}
         <h1 className="hero-v2-h1">
-          Descubra onde está<br />
-          o <span className="hero-v2-hl">melhor valor</span><br />
-          <span className="hero-v2-stroke">antes de apostar.</span>
+          {t('h1_a')}<br />
+          <span className="hero-v2-hl">{t('h1_b')}</span><br />
+          <span className="hero-v2-stroke">{t('h1_c')}</span>
         </h1>
 
         {/* Subtitle */}
-        <p className="hero-v2-sub">
-          O OddSeek compara odds em 10+ casas e mostra exatamente onde seu dinheiro rende mais
-          — sem precisar entender de matemática.
-        </p>
+        <p className="hero-v2-sub">{t('sub_v2')}</p>
 
         {/* Email capture */}
         <form action={`/${locale}/registro`} method="GET" className="hero-v2-form">
           <input
             name="email"
             type="email"
-            placeholder="seu@email.com"
+            placeholder={t('email_ph')}
             className="hero-v2-input"
             autoComplete="email"
           />
           <button type="submit" className="hero-v2-btn">
-            Começar grátis
+            {t('cta')}
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 7h10M8 3l4 4-4 4" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -88,14 +81,13 @@ export async function Hero({ locale }: Props) {
             ))}
           </div>
           <div className="hero-v2-social-text">
-            <span className="hero-v2-social-num">+12.000</span> apostadores já usam o OddSeek
+            <span className="hero-v2-social-num">{t('social_count')}</span> {t('social_text')}
           </div>
         </div>
 
         {/* App screenshot mockup */}
         <div className="hero-v2-screen-wrap">
           <div className="hero-v2-screen">
-            {/* Browser chrome */}
             <div className="hero-v2-chrome">
               <div className="hero-v2-dots">
                 <span style={{ background: '#FF5F57' }} />
@@ -105,15 +97,9 @@ export async function Hero({ locale }: Props) {
               <div className="hero-v2-url">oddseek.com/tips</div>
             </div>
 
-            {/* App nav */}
             <div className="hero-v2-appnav">
               {['Dashboard', 'Tips EV+', 'Comparador', 'Múltiplas', 'Banca'].map((item, i) => (
-                <div
-                  key={item}
-                  className={`hero-v2-navitem${i === 1 ? ' active' : ''}`}
-                >
-                  {item}
-                </div>
+                <div key={item} className={`hero-v2-navitem${i === 1 ? ' active' : ''}`}>{item}</div>
               ))}
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF0033', animation: 'pulse 1.2s ease-in-out infinite' }} />
@@ -121,7 +107,6 @@ export async function Hero({ locale }: Props) {
               </div>
             </div>
 
-            {/* Table header */}
             <div className="hero-v2-thead">
               <div className="hero-v2-th">Partida</div>
               <div className="hero-v2-th">Aposta</div>
@@ -130,7 +115,6 @@ export async function Hero({ locale }: Props) {
               <div className="hero-v2-th hero-v2-th-right">Casa</div>
             </div>
 
-            {/* Table rows */}
             {mockRows.map((row, i) => (
               <div key={i} className={`hero-v2-trow${i === 0 ? ' hero-v2-trow-best' : ''}`}>
                 <div>
@@ -144,14 +128,11 @@ export async function Hero({ locale }: Props) {
               </div>
             ))}
 
-            {/* Blurred gradient at bottom (teaser effect) */}
             <div className="hero-v2-screen-blur" />
           </div>
 
-          {/* Full-width fade at bottom */}
           <div className="hero-v2-screen-fade" />
 
-          {/* Float cards */}
           <div className="hero-v2-float hero-v2-float-left">
             <div className="hero-v2-float-icon" style={{ background: 'oklch(80% 0.3 115 / 0.15)' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

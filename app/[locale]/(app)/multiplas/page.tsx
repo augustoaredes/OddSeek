@@ -82,7 +82,7 @@ export default async function MultiplasPage({ searchParams }: Props) {
               Nenhuma múltipla disponível no momento.
             </div>
           ) : (
-            <div className="cards-scroll-row">
+            <div className="parlay-grid">
               {parlays.map(parlay => (
                 <div key={parlay.id} className="parlay-card-wrap">
                   <ParlayCard parlay={parlay} />
@@ -91,8 +91,9 @@ export default async function MultiplasPage({ searchParams }: Props) {
             </div>
           )}
 
-          {/* Sidebar */}
-          <div className="page-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Info panels — 3 colunas no desktop, empilhado no mobile */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+
             {bestParlay && (
               <div className="card" style={{ boxShadow: '0 0 0 1px oklch(80% 0.3 115 / 0.2), 0 8px 24px oklch(80% 0.3 115 / 0.08)' }}>
                 <div className="card-head">
@@ -123,7 +124,7 @@ export default async function MultiplasPage({ searchParams }: Props) {
             <div className="card" style={{ padding: '14px 16px' }}>
               <div className="card-title" style={{ marginBottom: 10 }}>Como funciona</div>
               {[
-                { icon: '✅', text: 'Apenas tips com EV+ são combinadas' },
+                { icon: '✅', text: 'Apenas tips com vantagem são combinadas' },
                 { icon: '🎯', text: 'Eventos distintos — sem correlação' },
                 { icon: '🚫', text: 'Bloqueado se prob. < 15% ou EV negativo' },
                 { icon: '📊', text: 'Probabilidade combinada assume independência' },
@@ -133,6 +134,10 @@ export default async function MultiplasPage({ searchParams }: Props) {
                   <span style={{ fontSize: 11, color: 'var(--text)', opacity: 0.7, lineHeight: 1.5 }}>{item.text}</span>
                 </div>
               ))}
+              <Link href={`/${locale}/tips`}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, padding: '8px 12px', borderRadius: 7, background: 'var(--s2)', border: '1px solid var(--border)', color: 'var(--lime)', fontSize: 11, fontWeight: 700, textDecoration: 'none' }}>
+                Ver Todas as Tips →
+              </Link>
             </div>
 
             <div className="card" style={{ padding: '14px 16px' }}>
@@ -150,10 +155,6 @@ export default async function MultiplasPage({ searchParams }: Props) {
               ))}
             </div>
 
-            <Link href={`/${locale}/tips`}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 16px', borderRadius: 8, background: 'var(--s2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-              Ver Todas as Tips →
-            </Link>
           </div>
         </div>
 
