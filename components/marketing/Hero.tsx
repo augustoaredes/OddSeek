@@ -162,16 +162,18 @@ export async function Hero({ locale }: Props) {
             </div>
           </div>
 
-          {/* Placar ao vivo animado */}
-          <div style={{
-            position: 'absolute',
-            bottom: -20,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 10,
-          }}>
-            <LiveScoreWidget />
-          </div>
+        </div>
+
+        {/* Placar ao vivo — fora do screen-wrap para não ser cortado pelo overflow:hidden do hero */}
+        <div style={{
+          marginTop: 20,
+          marginBottom: 40,
+          display: 'flex',
+          justifyContent: 'center',
+          position: 'relative',
+          zIndex: 10,
+        }}>
+          <LiveScoreWidget />
         </div>
       </div>
     </section>

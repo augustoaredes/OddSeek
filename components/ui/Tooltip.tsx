@@ -28,40 +28,45 @@ export function Tooltip({ content, children }: TooltipProps) {
 
   const hide = useCallback(() => setOpen(false), []);
 
+  // Cores hardcoded — tooltip é sempre dark independente do tema da página
+  const BG     = '#1A1C21';
+  const BORDER = '#2E3038';
+  const TEXT   = '#EDEAE3';
+
   const tooltip = open && mounted && (
     <span
       style={{
-        position:  'absolute',
-        top:       coords.top,
-        left:      coords.left,
-        transform: 'translate(-50%, -100%)',
-        zIndex:    99999,
-        background: 'var(--s3, #1C1D21)',
-        border:    '1px solid var(--bd2, #282B31)',
+        position:     'absolute',
+        top:          coords.top,
+        left:         coords.left,
+        transform:    'translate(-50%, -100%)',
+        zIndex:       99999,
+        background:   BG,
+        border:       `1px solid ${BORDER}`,
         borderRadius: 8,
-        padding:   '9px 13px',
-        fontSize:  12,
-        color:     'var(--text, #EDEAE3)',
-        lineHeight: 1.55,
-        width:     240,
-        textAlign: 'left',
-        boxShadow: '0 8px 32px #000c',
+        padding:      '9px 13px',
+        fontSize:     12,
+        color:        TEXT,
+        lineHeight:   1.55,
+        width:        240,
+        textAlign:    'left',
+        boxShadow:    '0 8px 32px rgba(0,0,0,0.55)',
         pointerEvents: 'none',
-        whiteSpace: 'normal',
+        whiteSpace:   'normal',
       }}
     >
       {content}
-      {/* arrow */}
+      {/* seta */}
       <span style={{
-        position:   'absolute',
-        bottom:     -5,
-        left:       '50%',
-        transform:  'translateX(-50%) rotate(45deg)',
-        width:      8,
-        height:     8,
-        background: 'var(--s3, #1C1D21)',
-        borderRight: '1px solid var(--bd2, #282B31)',
-        borderBottom: '1px solid var(--bd2, #282B31)',
+        position:     'absolute',
+        bottom:       -5,
+        left:         '50%',
+        transform:    'translateX(-50%) rotate(45deg)',
+        width:        8,
+        height:       8,
+        background:   BG,
+        borderRight:  `1px solid ${BORDER}`,
+        borderBottom: `1px solid ${BORDER}`,
       }} />
     </span>
   );
