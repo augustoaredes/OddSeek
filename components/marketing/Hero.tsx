@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { DottedSurface } from '@/components/ui/dotted-surface';
-import { FloatingSports } from './FloatingSports';
+import { BackgroundPaths } from '@/components/ui/background-paths';
 import { LiveScoreWidget } from './LiveScoreWidget';
 
 interface Props { locale: string }
@@ -28,7 +28,7 @@ export async function Hero({ locale }: Props) {
   return (
     <section className="hero-v2">
       <DottedSurface />
-      <FloatingSports />
+      <BackgroundPaths />
       <div style={{
         pointerEvents: 'none', position: 'absolute', inset: 0,
         background: 'radial-gradient(ellipse 70% 45% at 50% 0%, oklch(80% 0.3 115 / 0.10) 0%, transparent 70%)',
