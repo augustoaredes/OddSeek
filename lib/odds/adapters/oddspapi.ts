@@ -171,9 +171,10 @@ function buildMarketFromId(
   if (!marketKey) return null;
   if (outcomeIds.length < 2) return null;
 
-  // Build odds matrix [bookmakers × outcomes]
+  // Build odds matrix — valid decimal odds are in [1.01, 50].
+  // Values above 50 are either American-format integers or data errors.
   const validBooks = bookmakerData.filter(b =>
-    outcomeIds.every(id => (b.outcomes[id] ?? 0) > 1)
+    outcomeIds.every(id => { const o = b.outcomes[id] ?? 0; return o > 1 && o <= 50; })
   );
   if (validBooks.length < 1) return null;
 

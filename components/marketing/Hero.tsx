@@ -36,7 +36,7 @@ export async function Hero({ locale }: Props) {
       }} />
       <div className="field-bg" />
 
-      <div className="hero-v2-inner">
+      <div className="hero-v2-inner" style={{ position: 'relative', zIndex: 10 }}>
         {/* Badge pill */}
         <div className="hero-v2-badge">
           <span className="hero-v2-badge-dot" />

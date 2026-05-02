@@ -144,9 +144,7 @@ class AnimationController {
 
   public render() {
     const ctx = this.ctx;
-    // Use the hero bg colour so the canvas blends with the section
-    ctx.fillStyle = '#08080A';
-    ctx.fillRect(0, 0, this.size, this.size);
+    ctx.clearRect(0, 0, this.size, this.size);
 
     ctx.save();
     ctx.translate(this.size / 2, this.size / 2);
@@ -303,8 +301,8 @@ export function SpiralAnimation() {
   }, [dims]);
 
   return (
-    <div className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ mixBlendMode: 'screen' }} />
+    <div className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }} aria-hidden="true">
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
     </div>
   );
 }
