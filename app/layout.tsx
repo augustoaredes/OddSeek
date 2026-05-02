@@ -40,9 +40,9 @@ export const metadata: Metadata = {
     'Plataforma de inteligência esportiva: agregue odds de várias casas, identifique apostas com EV+ e gerencie sua banca como um profissional. OddSeek não é uma casa de apostas.',
   metadataBase: new URL('https://oddseek.vercel.app'),
   icons: {
-    icon: '/og-image.png',
+    icon: [{ url: '/icon.png', sizes: '512x512', type: 'image/png' }],
     apple: '/apple-touch-icon.png',
-    shortcut: '/og-image.png',
+    shortcut: '/icon.png',
   },
   openGraph: {
     title: 'OddSeek — Apostas de Valor. Em Tempo Real.',
