@@ -26,17 +26,16 @@ export function classifyEV(ev: number): EVBand {
 
 /**
  * Format EV as a percentage string with sign, e.g. "+8.3%" or "-2.1%".
- * Guards against NaN, Infinity and values that escaped a probability bug.
- * Valid EV range: −100% to +999% (beyond that it's a data error).
+ * Guards against NaN, Infinity and values beyond the realistic range (±30%).
  */
 export function formatEV(ev: number, decimals: 0 | 1 = 1): string {
-  if (!isFinite(ev) || isNaN(ev) || Math.abs(ev) > 9.99) return ev > 0 ? '>999%' : '—';
+  if (!isFinite(ev) || isNaN(ev) || ev > 0.30 || ev < -1) return '—';
   const pct = (ev * 100).toFixed(decimals);
   return ev >= 0 ? `+${pct}%` : `${pct}%`;
 }
 
 /** Sanitize an EV value from external/DB sources — returns 0 for corrupted values. */
 export function sanitizeEV(ev: number): number {
-  if (!isFinite(ev) || isNaN(ev) || Math.abs(ev) > 9.99) return 0;
+  if (!isFinite(ev) || isNaN(ev) || ev > 0.30 || ev < -1) return 0;
   return ev;
 }

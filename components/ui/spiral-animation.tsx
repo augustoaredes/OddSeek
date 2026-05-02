@@ -304,7 +304,7 @@ export function SpiralAnimation() {
 
   return (
     <div className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ mixBlendMode: 'screen' }} />
     </div>
   );
 }
