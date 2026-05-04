@@ -129,7 +129,7 @@ class AnimationController {
       const sw = 400 * sizeFactor / depth;
       this.ctx.lineWidth = sw;
       this.ctx.beginPath();
-      this.ctx.arc(x, y, 0.5, 0, Math.PI * 2);
+      this.ctx.arc(x, y, Math.max(0.5, Math.min(sw * 0.45, 2.8)), 0, Math.PI * 2);
       this.ctx.fill();
     }
   }
@@ -265,15 +265,21 @@ class Star {
 }
 
 export function SpiralAnimation() {
+  const wrapRef  = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef   = useRef<AnimationController | null>(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
 
+  // Mede o container real (não window) para o canvas nunca ser maior que o hero
   useEffect(() => {
-    const update = () => setDims({ w: window.innerWidth, h: window.innerHeight });
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      setDims({ w: Math.round(width), h: Math.round(height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
@@ -301,8 +307,8 @@ export function SpiralAnimation() {
   }, [dims]);
 
   return (
-    <div className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }} aria-hidden="true">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+    <div ref={wrapRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }} aria-hidden="true">
+      <canvas ref={canvasRef} className="absolute inset-0" style={{ opacity: 0.75 }} />
     </div>
   );
 }

@@ -10,7 +10,7 @@ const mockRows = [
   { match: 'Real Madrid vs PSG', league: 'UCL', odd: '2.10', ev: '+8.2%', ev_color: '#C8FC00', book: 'Bet365', selection: 'Vitória Madrid' },
   { match: 'Man City vs Arsenal', league: 'Premier', odd: '1.85', ev: '+5.7%', ev_color: '#C8FC00', book: 'KTO', selection: 'Ambas Marcam' },
   { match: 'Bayern vs Dortmund', league: 'Bundesliga', odd: '1.95', ev: '+4.1%', ev_color: '#00DC6E', book: 'Betano', selection: 'Over 2.5' },
-  { match: 'Flamengo vs Palmeiras', league: 'Brasileirão', odd: '3.20', ev: '+11.8%', ev_color: '#C8FC00', book: 'Stake', selection: 'Vitória Flam.' },
+  { match: 'Flamengo vs Palmeiras', league: 'Brasileirão', odd: '3.20', ev: '+11.8%', ev_color: '#C8FC00', book: 'Pixbet', selection: 'Vitória Flam.' },
   { match: 'LeBron James', league: 'NBA', odd: '1.72', ev: '+9.3%', ev_color: '#C8FC00', book: 'Bet365', selection: 'Over 25.5 pts' },
 ];
 

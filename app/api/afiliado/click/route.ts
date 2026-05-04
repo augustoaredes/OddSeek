@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
-const VALID_BOOKS = ['Bet365', 'Betano', 'Sportingbet', 'Stake', 'Pinnacle'] as const;
+const VALID_BOOKS = ['Bet365', 'Betano', 'Sportingbet', 'Pixbet', 'Superbet'] as const;
 
 const ClickSchema = z.object({
   book:       z.enum(VALID_BOOKS),

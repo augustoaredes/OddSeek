@@ -30,6 +30,7 @@ export function classifyEV(ev: number): EVBand {
  */
 export function formatEV(ev: number, decimals: 0 | 1 = 1): string {
   if (!isFinite(ev) || isNaN(ev) || ev > 0.30 || ev < -1) return '—';
+  if (Math.abs(ev) < 0.001) return '—'; // < 0.1% não é acionável
   const pct = (ev * 100).toFixed(decimals);
   return ev >= 0 ? `+${pct}%` : `${pct}%`;
 }

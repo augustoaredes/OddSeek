@@ -45,8 +45,8 @@ const OddsMockup = () => (
       { book: 'Bet365', odd: '2.10', fill: 100, best: true },
       { book: 'Betano', odd: '1.95', fill: 93, best: false },
       { book: 'KTO', odd: '1.92', fill: 91, best: false },
-      { book: 'Stake', odd: '1.88', fill: 90, best: false },
-      { book: '1xBet', odd: '1.85', fill: 88, best: false },
+      { book: 'Pixbet', odd: '1.88', fill: 90, best: false },
+      { book: 'Superbet', odd: '1.85', fill: 88, best: false },
     ].map((row, i) => (
       <div key={i} className="fm-odds-row">
         <div className="fm-book">{row.book}</div>

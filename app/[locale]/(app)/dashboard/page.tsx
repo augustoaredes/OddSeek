@@ -12,7 +12,6 @@ const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
   'Sportingbet':       { bg: '#1155CC', text: '#fff' },
   'Pixbet':            { bg: '#0057FF', text: '#fff' },
   'Superbet':          { bg: '#7B1FA2', text: '#fff' },
-  'Stake':             { bg: '#1B4F72', text: '#3FC3EE' },
   'Esportes da Sorte': { bg: '#FF6B00', text: '#fff' },
 };
 

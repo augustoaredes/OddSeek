@@ -74,7 +74,7 @@ export const MOCK_POSTS: Post[] = [
   {
     id: 'p05',
     author: COMMUNITY_USERS[2],
-    body: 'Devigorização das odds do Brasileirão hoje: Flamengo com 52% de prob real, odds do mercado implicam 46%. Bet clara mas liquidez baixa na Pinnacle.',
+    body: 'Devigorização das odds do Brasileirão hoje: Flamengo com 52% de prob real, odds do mercado implicam 46%. Bet clara mas liquidez baixa na Superbet.',
     attachedBet: { matchLabel: 'Flamengo vs Palmeiras', selection: 'Flamengo', odd: 2.35, status: 'pending' },
     likes: 28, comments: 6, createdAt: ago(12),
   },
@@ -87,7 +87,7 @@ export const MOCK_POSTS: Post[] = [
   {
     id: 'p07',
     author: COMMUNITY_USERS[1],
-    body: 'UFC 300: Jones com 72% prob real vs 64% implícita na Stake. EV +12.5%. Tamanho: 2.5% banca (conservador por ser MMA — alta variância).',
+    body: 'UFC 300: Jones com 72% prob real vs 64% implícita na Pixbet. EV +12.5%. Tamanho: 2.5% banca (conservador por ser MMA — alta variância).',
     attachedBet: { matchLabel: 'Jones vs Miocic', selection: 'Jones', odd: 1.57, status: 'won' },
     likes: 67, comments: 19, createdAt: ago(28),
   },

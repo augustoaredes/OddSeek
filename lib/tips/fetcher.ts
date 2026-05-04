@@ -58,7 +58,7 @@ export async function getTips(): Promise<Tip[]> {
           sel.books[0],
         );
 
-        if (!bestBook || bestBook.ev <= 0) continue;
+        if (!bestBook || bestBook.ev < 0.001) continue; // ignora EV < 0.1%
 
         tips.push({
           id:             `${event.id}-${market.market}-${sel.label}`,

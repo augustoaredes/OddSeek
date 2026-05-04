@@ -4,8 +4,6 @@ const BOOK_COLORS: Record<string, { bg: string; text: string; border?: string }>
   'Sportingbet': { bg: '#1155CC', text: '#fff' },
   'Pixbet':      { bg: '#0057FF', text: '#fff' },
   'Superbet':    { bg: '#7B1FA2', text: '#fff' },
-  'Stake':       { bg: '#1B4F72', text: '#3FC3EE' },
-  'Pinnacle':    { bg: '#1A1A1A', text: '#F5A623' },
 };
 
 const DEFAULT_STYLE = { bg: '#3A3D45', text: '#fff' };

@@ -171,10 +171,10 @@ function buildMarketFromId(
   if (!marketKey) return null;
   if (outcomeIds.length < 2) return null;
 
-  // Build odds matrix — valid decimal odds are in [1.01, 50].
-  // Values above 50 are either American-format integers or data errors.
+  // Valid decimal odds: [1.01, 30]. Above 30 = extreme underdog ou dado corrompido (formato americano).
+  // Mercados brasileiros regulares raramente ultrapassam 25.
   const validBooks = bookmakerData.filter(b =>
-    outcomeIds.every(id => { const o = b.outcomes[id] ?? 0; return o > 1 && o <= 50; })
+    outcomeIds.every(id => { const o = b.outcomes[id] ?? 0; return o > 1.01 && o <= 30; })
   );
   if (validBooks.length < 1) return null;
 
