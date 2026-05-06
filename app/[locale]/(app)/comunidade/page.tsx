@@ -5,6 +5,7 @@ import { getDb } from '@/lib/db/client';
 import { posts, users } from '@/lib/db/schema';
 import { eq, desc, sql } from 'drizzle-orm';
 import { MOCK_LEADERBOARD } from '@/lib/community/mock-data';
+import { NewPostForm } from '@/components/community/NewPostForm';
 
 interface DbPost {
   id: string;
@@ -88,6 +89,7 @@ export default async function ComunidadePage() {
       <div className="page-grid" style={{ '--pg-cols': '1fr 280px', gap: 24 } as React.CSSProperties}>
         {/* Feed */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <NewPostForm />
           {dbPosts.length === 0 && (
             <div style={{ padding: '48px 20px', textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>💬</div>
