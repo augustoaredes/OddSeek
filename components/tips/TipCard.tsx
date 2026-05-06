@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ConfidenceRing } from './ConfidenceRing';
 import { BookmakerBadge } from '@/components/odds/BookmakerBadge';
+import { AffiliateButton } from './AffiliateButton';
 import { sanitizeEV } from '@/lib/analytics/ev';
 import { kellyFraction } from '@/lib/banca/stake';
 import type { Tip } from '@/lib/tips/mock-data';
@@ -150,26 +151,17 @@ export function TipCard({ tip, locale, rank, highlight, bankroll = 1000 }: TipCa
       </div>
 
       {/* CTA principal */}
-      <a
-        href={tip.affiliateUrl}
-        target="_blank"
-        rel="sponsored noopener noreferrer"
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 6, padding: '11px 16px', borderRadius: 8,
-          background: ev >= 0.10 ? 'var(--lime)' : ev >= 0.05 ? '#00E87A22' : 'var(--s2)',
-          border: ev >= 0.10 ? 'none' : `1px solid ${ev >= 0.05 ? 'var(--green)' : 'var(--border)'}`,
-          color: ev >= 0.10 ? '#000' : ev >= 0.05 ? 'var(--green)' : 'var(--text)',
-          fontSize: 12, fontWeight: 800,
-          fontFamily: 'var(--font-cond)', letterSpacing: '0.04em',
-          textTransform: 'uppercase', textDecoration: 'none',
-          transition: 'opacity .15s',
-        }}
-      >
-        {stake > 0
+      <AffiliateButton
+        book={tip.book}
+        affiliateUrl={tip.affiliateUrl}
+        tipId={tip.id}
+        eventId={tip.eventId}
+        highlight={ev >= 0.10}
+        ev={ev}
+        label={stake > 0
           ? `Apostar com vantagem · R$${stake} na ${tip.book} →`
           : `Apostar na ${tip.book} →`}
-      </a>
+      />
 
       <div style={{ fontSize: 10, color: 'var(--dim)', lineHeight: 1.4 }}>
         Análise estatística. Sem garantia de resultado.
