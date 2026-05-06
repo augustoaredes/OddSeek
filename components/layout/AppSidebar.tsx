@@ -80,6 +80,21 @@ export function AppSidebar() {
         </NavIcon>
       ),
     },
+    {
+      href: `/${locale}/arbitragem`,
+      label: t('arbitrage'),
+      badge: 'ARB',
+      badgeVariant: 'amber' as const,
+      icon: (
+        <NavIcon>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="3.5" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/>
+            <circle cx="10.5" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M5.5 5.5L8.5 4M5.5 8.5L8.5 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+        </NavIcon>
+      ),
+    },
   ];
 
   const bankrollItems: NavItem[] = [

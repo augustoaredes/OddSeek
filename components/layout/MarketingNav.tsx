@@ -41,6 +41,9 @@ export async function MarketingNav() {
         <Link href={`/${locale}#matches`}>{t('live')}</Link>
         <Link href={`/${locale}#banca`}>{t('bankroll')}</Link>
         <Link href={`/${locale}#pricing`}>{t('pricing')}</Link>
+        <Link href={`/${locale}/ferramentas`} style={{ color: 'var(--lime)', fontWeight: 700 }}>
+          Ferramentas
+        </Link>
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
