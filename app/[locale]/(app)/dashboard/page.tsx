@@ -1,18 +1,21 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getTranslations, getLocale } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db/client';
 import { bets as betsTable, bankrolls } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getTips } from '@/lib/tips/fetcher';
-import { formatGameTimeBRT } from '@/lib/utils/date';
 import { sanitizeEV, formatEV } from '@/lib/analytics/ev';
-import { roi as calcROI, totalProfit } from '@/lib/banca/metrics';
+import { roi as calcROI, hitRate, totalProfit } from '@/lib/banca/metrics';
 import { generateAlerts } from '@/lib/banca/alerts';
 import type { BancaAlert } from '@/lib/banca/alerts';
 import type { SettledBet } from '@/lib/banca/metrics';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { formatGameTimeBRT } from '@/lib/utils/date';
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: 'Dashboard — OddSeek' };
+}
 
 const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
   'Bet365':            { bg: '#00843D', text: '#fff' },
@@ -23,87 +26,65 @@ const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
   'Esportes da Sorte': { bg: '#FF6B00', text: '#fff' },
 };
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'dashboard' });
-  return { title: t('title') };
+const SPORT_ICONS: Record<string, string> = {
+  football: '⚽', basketball: '🏀', tennis: '🎾', mma: '🥊',
+};
+
+function getGreeting(name?: string | null) {
+  const h = new Date().getHours();
+  const p = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const first = name?.split(' ')[0];
+  return { period: p, name: first ?? '' };
 }
 
-const SPORT_ICONS: Record<string, string> = {
-  football:   '⚽',
-  basketball: '🏀',
-  tennis:     '🎾',
-  mma:        '🥊',
-};
-
-const SPORT_DOTS: Record<string, string> = {
-  football:   '#4ade80',
-  basketball: '#a78bfa',
-  tennis:     '#fcd34d',
-  mma:        '#f87171',
-};
-
-const SPORT_FILTERS = [
-  { value: 'all',        label: 'Todos',    icon: '' },
-  { value: 'football',   label: 'Futebol',  icon: '⚽', dot: '#4ade80' },
-  { value: 'basketball', label: 'Basquete', icon: '🏀', dot: '#a78bfa' },
-  { value: 'tennis',     label: 'Tênis',    icon: '🎾', dot: '#fcd34d' },
-  { value: 'mma',        label: 'MMA',      icon: '🥊', dot: '#f87171' },
-];
-
-// Static odds comparison for demo (used when no real tip odds available)
-const COMPARE_PROB = 0.62;
-const compareOdds = [
-  { house: 'Bet365',            odd: 2.10 },
-  { house: 'Betano',            odd: 1.95 },
-  { house: 'Sportingbet',       odd: 1.92 },
-  { house: 'Superbet',          odd: 1.90 },
-  { house: 'Pixbet',            odd: 1.88 },
-  { house: 'Esportes da Sorte', odd: 1.85 },
-];
-const maxOdd = Math.max(...compareOdds.map(r => r.odd));
-const staticOdds = compareOdds.map(r => {
-  const ev = COMPARE_PROB * r.odd - 1;
-  return {
-    house: r.house,
-    fill: Math.round((r.odd / maxOdd) * 100),
-    val: r.odd.toFixed(2),
-    best: r.odd === maxOdd,
-    ev: ev > 0 ? `+${(ev * 100).toFixed(1)}%` : `${(ev * 100).toFixed(1)}%`,
-    evPositive: ev > 0,
-  };
-});
-
-function getGreeting(name?: string | null): string {
-  const h = new Date().getHours();
-  const period = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const first = name?.split(' ')[0];
-  return first ? `${period}, ${first}` : period;
+function buildEquityPath(settled: SettledBet[], initial: number): { d: string; fill: string; last: { x: number; y: number }; profit: number } {
+  const W = 720; const H = 200;
+  if (settled.length === 0) {
+    return { d: `M0,${H * 0.6}`, fill: `M0,${H * 0.6} L${W},${H * 0.6} L${W},${H} L0,${H} Z`, last: { x: W, y: H * 0.6 }, profit: 0 };
+  }
+  let cum = 0;
+  const points = settled.map(b => {
+    cum += b.status === 'won' ? b.stake * (b.odd - 1) : b.status === 'lost' ? -b.stake : 0;
+    return cum;
+  });
+  const min = Math.min(0, ...points);
+  const max = Math.max(0, ...points);
+  const range = max - min || 1;
+  const pts = points.map((v, i) => ({
+    x: (i / Math.max(points.length - 1, 1)) * W,
+    y: H - ((v - min) / range) * (H - 20) - 10,
+  }));
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  const fill = `${d} L${W},${H} L0,${H} Z`;
+  return { d, fill, last, profit: cum };
 }
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sport?: string; league?: string }>;
+  searchParams: Promise<{ sport?: string }>;
 }) {
-  const locale       = await getLocale();
-  const sp           = await searchParams;
-  const sportFilter  = sp.sport  ?? 'all';
-  const leagueFilter = sp.league ?? 'all';
+  const locale = await getLocale();
+  const sp = await searchParams;
+  const sportFilter = sp.sport ?? 'all';
 
-  // ── Auth + user banca data ──────────────────────────────────────────────────
+  // ── Auth + user data ────────────────────────────────────────────────────────
   const session = await auth();
-  let userROI         = 0;
-  let userBetCount    = 0;
-  let userBalance     = 0;
-  let userInitial     = 0;
-  let userPending     = 0;
+  let userROI       = 0;
+  let userHitRate   = 0;
+  let userBalance   = 0;
+  let userInitial   = 0;
+  let userPending   = 0;
+  let userProfit    = 0;
+  let settled: SettledBet[] = [];
+  let recentBets: Array<{ id: string; status: string; odd: number; stake: number; book: string; selection: string; eventLabel: string; placedAt: Date }> = [];
   let bancaAlerts: BancaAlert[] = [];
 
   if (session?.user?.id) {
     try {
       const db = getDb();
-      const [userBets, bankrollRows] = await Promise.all([
+      const [dbBets, bankrollRows] = await Promise.all([
         db.select().from(betsTable)
           .where(eq(betsTable.userId, session.user.id))
           .orderBy(desc(betsTable.placedAt))
@@ -113,17 +94,20 @@ export default async function DashboardPage({
           .limit(1),
       ]);
 
-      const settled: SettledBet[] = userBets
+      recentBets = dbBets.slice(0, 8).map(b => ({
+        id: b.id, status: b.status, odd: Number(b.odd), stake: Number(b.stake),
+        book: b.book, selection: b.selection, eventLabel: b.eventLabel,
+        placedAt: b.placedAt,
+      }));
+
+      settled = dbBets
         .filter(b => b.status !== 'pending')
-        .map(b => ({
-          status: b.status as SettledBet['status'],
-          odd: Number(b.odd),
-          stake: Number(b.stake),
-        }));
+        .map(b => ({ status: b.status as SettledBet['status'], odd: Number(b.odd), stake: Number(b.stake) }));
 
       userROI      = calcROI(settled);
-      userBetCount = settled.length;
-      userPending  = userBets.filter(b => b.status === 'pending').length;
+      userHitRate  = hitRate(settled) * 100;
+      userProfit   = totalProfit(settled);
+      userPending  = dbBets.filter(b => b.status === 'pending').length;
 
       if (bankrollRows[0]) {
         userBalance = Number(bankrollRows[0].currentAmount);
@@ -133,446 +117,445 @@ export default async function DashboardPage({
     } catch { /* non-blocking */ }
   }
 
-  // ── Tips data ───────────────────────────────────────────────────────────────
+  const hasData = settled.length > 0;
+
+  // ── Tips ───────────────────────────────────────────────────────────────────
   const allTips = await getTips();
-  let tips = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
-  if (leagueFilter !== 'all') tips = tips.filter(t => t.league === leagueFilter);
-
-  const sportBase  = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
-  const leagues    = ['all', ...Array.from(new Set(sportBase.map(t => t.league))).sort()];
+  const tips = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
+  const highEVTips = allTips.filter(t => sanitizeEV(t.ev) >= 0.05).slice(0, 6);
+  const bestTip = highEVTips[0] ?? allTips[0] ?? null;
+  const otherTips = highEVTips.slice(1, 4);
   const positiveEV = allTips.filter(t => sanitizeEV(t.ev) > 0);
-  const elite      = allTips.filter(t => t.confidenceBand === 'elite');
-  const bestTip    = allTips[0] ?? null;
-  const avgEV      = positiveEV.length > 0
-    ? positiveEV.reduce((s, t) => s + sanitizeEV(t.ev), 0) / positiveEV.length
-    : 0;
-  const bestOdd    = allTips.length > 0 ? allTips.reduce((b, t) => t.odd > b.odd ? t : b, allTips[0]) : null;
-  const highEVTips = allTips.filter(t => sanitizeEV(t.ev) >= 0.08);
-  const liveCount  = Math.min(allTips.length, 3);
-  const displayTips = tips.slice(0, 12);
 
-  // ── Alerts (banca + tips) ───────────────────────────────────────────────────
-  const tipAlerts = highEVTips.slice(0, 3).map(t => ({
-    msg: `EV ${formatEV(sanitizeEV(t.ev))} · ${t.matchLabel.replace(/^[^\s]+\s/, '').slice(0, 30)} — ${t.book}`,
-    time: 'agora',
-    color: sanitizeEV(t.ev) >= 0.10 ? 'var(--lime)' : 'var(--green)',
-  }));
-  const alertItems = [
-    ...bancaAlerts.map(a => ({
-      msg: a.message,
-      time: 'banca',
-      color: a.severity === 'critical' ? 'var(--red)' : a.severity === 'warning' ? 'var(--amber)' : 'var(--blue)',
-    })),
-    ...tipAlerts,
-  ];
-  const displayAlerts = alertItems.length > 0 ? alertItems : [
-    { msg: 'Odd subiu para melhor nível nas últimas 2h',    time: '2m',  color: 'var(--green)' },
-    { msg: 'Nova análise EV+ identificada em Futebol',      time: '8m',  color: 'var(--lime)'  },
-    { msg: 'Escalação confirmada — verificar apostas open', time: '23m', color: 'var(--amber)' },
-  ];
+  // ── Chart ──────────────────────────────────────────────────────────────────
+  const { d: chartPath, fill: chartFill, last: chartLast, profit: chartProfit } = buildEquityPath(settled, userInitial);
+  const wonCount  = settled.filter(b => b.status === 'won').length;
+  const lostCount = settled.filter(b => b.status === 'lost').length;
 
-  // ── Build href helper ───────────────────────────────────────────────────────
-  function dashHref(patch: Record<string, string>) {
-    const p = new URLSearchParams();
-    const s = patch.sport  ?? sportFilter;
-    const l = patch.league ?? leagueFilter;
-    if (s !== 'all') p.set('sport', s);
-    if (l !== 'all') p.set('league', l);
-    const q = p.toString();
-    return `/${locale}/dashboard${q ? `?${q}` : ''}`;
+  // ── Activity feed ──────────────────────────────────────────────────────────
+  type ActivityItem = { dot: string; html: string; time: string };
+  const activityItems: ActivityItem[] = [];
+
+  recentBets.slice(0, 6).forEach(b => {
+    if (b.status === 'won') {
+      const profit = b.stake * (b.odd - 1);
+      activityItems.push({
+        dot: 'var(--green)',
+        html: `<b>Acerto</b> · ${b.selection} <span style="color:var(--green);font-weight:700">+R$${profit.toFixed(0)}</span>`,
+        time: new Date(b.placedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+      });
+    } else if (b.status === 'lost') {
+      activityItems.push({
+        dot: 'var(--red)',
+        html: `<b>Erro</b> · ${b.selection} <span style="color:var(--red);font-weight:700">-R$${b.stake.toFixed(0)}</span>`,
+        time: new Date(b.placedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+      });
+    } else if (b.status === 'pending') {
+      activityItems.push({
+        dot: 'var(--amber)',
+        html: `<b>Aberta</b> · ${b.selection} — ${b.book}`,
+        time: new Date(b.placedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+      });
+    }
+  });
+
+  // Fill with EV opportunity alerts if needed
+  highEVTips.slice(0, Math.max(0, 4 - activityItems.length)).forEach(t => {
+    activityItems.push({
+      dot: 'var(--lime)',
+      html: `Nova oportunidade <b>EV${formatEV(sanitizeEV(t.ev))}</b> · ${t.matchLabel.replace(/^[^\s]+\s/, '').slice(0, 28)}`,
+      time: 'agora',
+    });
+  });
+
+  const displayActivity = activityItems.slice(0, 6);
+  if (displayActivity.length === 0) {
+    // Static fallback
+    const statics: ActivityItem[] = [
+      { dot: 'var(--green)', html: '<b>Acerto</b> · Vitória Real Madrid <span style="color:var(--green);font-weight:700">+R$ 110</span>', time: 'Há 2h' },
+      { dot: 'var(--lime)',  html: 'Nova oportunidade <b>EV+11.8%</b> detectada', time: 'Há 4h' },
+      { dot: 'var(--green)', html: '<b>Acerto</b> · Over 2.5 Bayern <span style="color:var(--green);font-weight:700">+R$ 95</span>', time: 'Ontem' },
+      { dot: 'var(--red)',  html: '<b>Erro</b> · Vitória Arsenal <span style="color:var(--red);font-weight:700">-R$ 50</span>', time: 'Ontem' },
+      { dot: 'var(--amber)', html: 'Odd se moveu · <b>Bayern Over 2.5</b> 1.95 → 2.05', time: 'Ontem' },
+    ];
+    displayActivity.push(...statics);
   }
 
-  const greeting = getGreeting(session?.user?.name);
-  const hasRealPerf = userBetCount > 0;
+  // ── Greeting ───────────────────────────────────────────────────────────────
+  const { period, name } = getGreeting(session?.user?.name);
+  const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  // ── KPI values ─────────────────────────────────────────────────────────────
+  const kpiBalance  = hasData && userBalance > 0 ? `R$ ${userBalance.toFixed(0)}` : 'R$ —';
+  const kpiHitRate  = hasData ? `${userHitRate.toFixed(0)}` : '—';
+  const kpiROI      = hasData ? `${userROI >= 0 ? '+' : ''}${userROI.toFixed(1)}` : '+18.4';
+  const kpiPending  = String(userPending || allTips.length);
+
+  // Insight dinâmico baseado nos dados
+  const topSport = (() => {
+    const counts: Record<string, number> = {};
+    highEVTips.forEach(t => { counts[t.sport] = (counts[t.sport] ?? 0) + 1; });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return top ? { sport: top[0], count: top[1] } : null;
+  })();
 
   return (
-    <div className="page-full">
+    <div>
+      {/* ── Page header ── */}
+      <div className="ph">
+        <div className="ph-l">
+          <div className="ph-crumb">Dashboard · {today} · {nowTime}</div>
+          <h1 className="ph-h">
+            {period}{name ? <>, <em>{name}</em></> : ''}
+          </h1>
+          <div className="ph-sub">
+            {positiveEV.length > 0
+              ? `${positiveEV.length} oportunidades EV+ detectadas hoje · ${hasData && userProfit > 0 ? `banca em alta de R$ ${userProfit.toFixed(0)} no total` : `${allTips.length} tips disponíveis`}`
+              : `${allTips.length} tips disponíveis agora`
+            }
+          </div>
+        </div>
+        <div className="ph-r">
+          <Link href={`/${locale}/banca/apostas`} className="btn btn-ghost" style={{ fontSize: 12 }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 6h9M6 1.5v9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            Nova aposta
+          </Link>
+          <Link href={`/${locale}/odds`} className="btn btn-lime" style={{ fontSize: 12 }}>
+            Ver odds ao vivo
+          </Link>
+        </div>
+      </div>
 
-      {/* ── Saudação personalizada ── */}
-      {session?.user && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 20px 8px',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}>
-          <div>
-            <div style={{
-              fontFamily: 'var(--font-cond)', fontSize: 20, fontWeight: 900,
-              textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)',
-            }}>
-              {greeting}
+      <div className="dash">
+
+        {/* ── KPI Grid ── */}
+        <div className="dash-kpi-grid">
+          {/* Banca atual */}
+          <div className="dash-kpi k1">
+            <div className="dash-kpi-h">
+              <div className="dash-kpi-l">Banca atual</div>
+              <div className="dash-kpi-i">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><circle cx="8" cy="8.5" r="1.6" stroke="currentColor" strokeWidth="1.4"/></svg>
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-              {userPending > 0
-                ? `${userPending} aposta${userPending > 1 ? 's' : ''} aberta${userPending > 1 ? 's' : ''}${userBalance > 0 ? ` · Banca: R$${userBalance.toFixed(0)}` : ''}`
-                : userBalance > 0
-                  ? `Banca atual: R$${userBalance.toFixed(0)}`
-                  : `${allTips.length} tips disponíveis · ${highEVTips.length} com EV > 8%`
+            <div className="dash-kpi-v" style={{ color: 'var(--lime)' }}>{kpiBalance}</div>
+            <div className="dash-kpi-foot">
+              {hasData && userProfit !== 0 ? (
+                <>
+                  <span className={`dash-kpi-trend ${userProfit >= 0 ? 'up' : 'dn'}`}>
+                    {userProfit >= 0 ? '+' : ''}R$ {Math.abs(userProfit).toFixed(0)}
+                  </span>
+                  <span>lucro total</span>
+                </>
+              ) : <span style={{ color: 'var(--dim)' }}>sem apostas registradas</span>}
+            </div>
+            {hasData && (
+              <svg className="dash-kpi-spark" width="60" height="22" viewBox="0 0 60 22">
+                <polyline points="0,18 10,15 20,16 30,10 40,11 50,6 60,3" stroke="var(--lime)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+              </svg>
+            )}
+          </div>
+
+          {/* Hit rate */}
+          <div className="dash-kpi k2">
+            <div className="dash-kpi-h">
+              <div className="dash-kpi-l">Hit rate</div>
+              <div className="dash-kpi-i">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4"/><path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+            </div>
+            <div className="dash-kpi-v" style={{ color: 'var(--green)' }}>
+              {hasData ? <>{kpiHitRate}<small>%</small></> : '—'}
+            </div>
+            <div className="dash-kpi-foot">
+              {hasData
+                ? <><span className={`dash-kpi-trend ${userHitRate >= 55 ? 'up' : 'dn'}`}>{wonCount}W / {lostCount}L</span><span>apostas fechadas</span></>
+                : <span style={{ color: 'var(--dim)' }}>sem histórico</span>
               }
             </div>
           </div>
-          {bancaAlerts.some(a => a.severity === 'critical' || a.severity === 'warning') && (
-            <Link href={`/${locale}/banca`} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 8,
-              background: 'oklch(70% 0.18 60 / 0.10)',
-              border: '1px solid oklch(70% 0.18 60 / 0.35)',
-              color: 'var(--amber)', fontSize: 11, fontWeight: 700,
-              textDecoration: 'none', whiteSpace: 'nowrap',
-            }}>
-              ⚠ {bancaAlerts.filter(a => a.severity !== 'info').length} alerta{bancaAlerts.filter(a => a.severity !== 'info').length > 1 ? 's' : ''} na banca →
-            </Link>
-          )}
-        </div>
-      )}
 
-      {/* ── Faixa de oportunidades ao vivo ── */}
-      {liveCount > 0 && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '9px 20px',
-          background: 'oklch(80% 0.3 115 / 0.07)',
-          borderBottom: '1px solid oklch(80% 0.3 115 / 0.25)',
-          gap: 12,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--lime)', flexShrink: 0, animation: 'breathe 2s ease-in-out infinite' }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--lime)', fontFamily: 'var(--font-cond)', letterSpacing: '0.04em' }}>
-              {highEVTips.length > 0
-                ? `${highEVTips.length} oportunidade${highEVTips.length > 1 ? 's' : ''} com EV > 8% detectada${highEVTips.length > 1 ? 's' : ''} agora`
-                : `${liveCount} aposta${liveCount > 1 ? 's' : ''} ao vivo disponível${liveCount > 1 ? 'is' : ''}`}
-            </span>
-          </div>
-          <Link href={`/${locale}/tips?filter=elite`}
-            style={{ fontSize: 11, fontWeight: 800, color: 'var(--lime)', textDecoration: 'none', whiteSpace: 'nowrap', opacity: 0.85 }}>
-            Ver todas →
-          </Link>
-        </div>
-      )}
-
-      {/* ── Stat cards ── */}
-      <div className="stat-cards">
-        <div className="stat-card">
-          <div className="sc-label">Tips ativas</div>
-          <div className="sc-val" style={{ color: 'var(--lime)' }}>{allTips.length}</div>
-          <div className="sc-sub">↑ {positiveEV.length} com EV+</div>
-        </div>
-        <div className="stat-card">
-          <div className="sc-label">
-            <Tooltip content="Valor Esperado médio: indica o quanto as odds estão acima do risco real. Positivo = vantagem para você.">EV médio</Tooltip>
-          </div>
-          <div className="sc-val" style={{ color: 'var(--green)' }}>
-            {avgEV > 0 ? formatEV(avgEV) : '—'}
-          </div>
-          <div className="sc-sub">{elite.length} elite</div>
-        </div>
-        <div className="stat-card">
-          <div className="sc-label">Melhor odd hoje</div>
-          <div className="sc-val" style={{ color: 'var(--amber)' }}>{bestOdd ? bestOdd.odd.toFixed(2) : '—'}</div>
-          <div className="sc-sub">{bestOdd ? bestOdd.matchLabel.replace(/^[^\s]+\s/, '').slice(0, 22) : '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="sc-label">
-            {hasRealPerf ? 'Meu ROI total' : 'Performance 14d'}
-          </div>
-          <div className="sc-val" style={{ color: hasRealPerf ? (userROI >= 0 ? 'var(--blue)' : 'var(--red)') : 'var(--blue)' }}>
-            {hasRealPerf
-              ? `${userROI >= 0 ? '+' : ''}${userROI.toFixed(1)}%`
-              : '+18.4%'
-            }
-          </div>
-          <div className="sc-sub">
-            {hasRealPerf
-              ? `ROI · ${userBetCount} aposta${userBetCount !== 1 ? 's' : ''} fechada${userBetCount !== 1 ? 's' : ''}`
-              : 'ROI · dados de exemplo'
-            }
-          </div>
-        </div>
-      </div>
-
-      {/* ── Filter bar ── */}
-      <div className="filter-bar" style={{ padding: '10px 0 0', borderBottom: '1px solid var(--border)', marginLeft: 0 }}>
-        <div style={{ display: 'flex', gap: 6, padding: '0 0 8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-          {SPORT_FILTERS.map(f => (
-            <Link key={f.value} href={dashHref({ sport: f.value, league: 'all' })}
-              className={`f-tab${sportFilter === f.value ? ' on' : ''}`}>
-              {f.icon && <span style={{ fontSize: 12 }}>{f.icon}</span>}
-              {f.label}
-            </Link>
-          ))}
-          <span className="f-sep" />
-          <Link href={`/${locale}/tips?filter=elite`} className="f-tab ev-tab">
-            EV+
-          </Link>
-          <span style={{ marginLeft: 'auto', paddingRight: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--red)', fontFamily: 'var(--font-cond)', fontWeight: 700 }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
-            ao vivo
-          </span>
-        </div>
-
-        {leagues.length > 2 && (
-          <div style={{ display: 'flex', gap: 6, padding: '0 0 10px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {leagues.map(lg => (
-              <Link key={lg} href={dashHref({ league: lg })}
-                style={{
-                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                  background: leagueFilter === lg ? 'var(--lime)' : 'var(--s2)',
-                  border: `1px solid ${leagueFilter === lg ? 'var(--lime)' : 'var(--border)'}`,
-                  color: leagueFilter === lg ? '#000' : 'var(--muted)',
-                  textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
-                  transition: 'all .15s',
-                }}>
-                {lg === 'all' ? 'Todos' : lg}
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Events table + right panel ── */}
-      <div className="dash-layout">
-
-        {/* Events list */}
-        <div className="dash-events">
-          <div style={{ minWidth: 560, overflow: 'visible' }}>
-          <div className="ev-table-head" style={{ padding: '8px 0' }}>
-            <div className="eth">Hora</div>
-            <div className="eth">Partida</div>
-            <div className="eth eth-center">1 · X · 2</div>
-            <div className="eth" style={{ paddingLeft: 8 }}>Casa · Odd</div>
-            <div className="eth eth-center">EV</div>
-          </div>
-
-          {displayTips.length === 0 ? (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              Nenhuma tip disponível para este filtro.
+          {/* ROI */}
+          <div className="dash-kpi k3">
+            <div className="dash-kpi-h">
+              <div className="dash-kpi-l">ROI total</div>
+              <div className="dash-kpi-i">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13l4-5 3 3 5-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 4h4v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
             </div>
-          ) : displayTips.map((tip, i) => {
-            const dotColor  = SPORT_DOTS[tip.sport] ?? '#8A8780';
-            const isLive    = i < 2;
-            const match     = tip.matchLabel.replace(/^[^\s]+\s/, '');
-            const parts     = match.split(/ × | vs /i);
-            const home      = parts[0]?.trim() ?? match;
-            const away      = parts[1]?.trim() ?? '';
-            const evCls     = tip.ev >= 0.10 ? 'hi' : tip.ev >= 0.02 ? 'pos' : 'low';
-            const o1        = tip.odd;
-            const oX        = +(tip.odd * 0.62 + 0.3).toFixed(2);
-            const o2        = +(tip.odd * 0.48 + 0.2).toFixed(2);
-            const bookStyle = BOOK_COLORS[tip.book] ?? { bg: '#3A3D45', text: '#fff' };
-            const sportIcon = SPORT_ICONS[tip.sport] ?? '🎯';
-            const href      = tip.eventId
-              ? `/${locale}/odds/${tip.eventId}`
-              : `/${locale}/tips`;
+            <div className="dash-kpi-v" style={{ color: hasData ? (userROI >= 0 ? 'var(--amber)' : 'var(--red)') : 'var(--amber)' }}>
+              {kpiROI}<small>%</small>
+            </div>
+            <div className="dash-kpi-foot">
+              {hasData
+                ? <><span className={`dash-kpi-trend ${userROI >= 0 ? 'up' : 'dn'}`}>{userROI >= 0 ? '+' : ''}{userROI.toFixed(1)}%</span><span>{settled.length} apostas</span></>
+                : <><span className="dash-kpi-trend up">+2.1%</span><span>exemplo · 14d</span></>
+              }
+            </div>
+          </div>
 
-            return (
-              <Link key={tip.id} href={href}
-                className="event-row" style={{ textDecoration: 'none', display: 'grid', gridTemplateColumns: '68px 1fr 148px 110px 56px', alignItems: 'center', padding: '0', minHeight: 58, borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .12s' }}>
+          {/* Apostas ativas / tips */}
+          <div className="dash-kpi k4">
+            <div className="dash-kpi-h">
+              <div className="dash-kpi-l">{userPending > 0 ? 'Apostas abertas' : 'Tips EV+ hoje'}</div>
+              <div className="dash-kpi-i">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M2 6h12M5 3V1.5M11 3V1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              </div>
+            </div>
+            <div className="dash-kpi-v" style={{ color: 'var(--blue)' }}>{kpiPending}</div>
+            <div className="dash-kpi-foot">
+              {userPending > 0
+                ? <><span style={{ color: 'var(--muted)' }}>R$ {recentBets.filter(b => b.status === 'pending').reduce((s, b) => s + b.stake, 0).toFixed(0)} expostos</span></>
+                : <><span style={{ color: 'var(--muted)' }}>{positiveEV.length} com EV positivo</span></>
+              }
+            </div>
+          </div>
+        </div>
 
-                <div>
-                  {isLive ? (
-                    <div className="ev-live-badge">
-                      <span className="ev-dot-live" />
-                      67&apos;
-                    </div>
-                  ) : (
-                    <div className="ev-time" style={{ fontSize: 11, lineHeight: 1.3 }}>{formatGameTimeBRT(tip.expiresAt)}</div>
+        {/* ── Chart + Top Pick ── */}
+        <div className="dash-row-2">
+
+          {/* Performance chart */}
+          <div className="dash-chart-c">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', fontFamily: 'var(--font-cond)' }}>
+                  Performance da banca
+                </div>
+                <div style={{ fontFamily: 'var(--font-cond)', fontSize: 28, fontWeight: 900, lineHeight: 1, marginTop: 4, color: 'var(--text)' }}>
+                  {hasData && userBalance > 0 ? `R$ ${userBalance.toFixed(0)} ` : 'R$ — '}
+                  {hasData && userROI !== 0 && (
+                    <span style={{ color: userROI >= 0 ? 'var(--green)' : 'var(--red)', fontSize: 16 }}>
+                      {userROI >= 0 ? '+' : ''}{userROI.toFixed(1)}%
+                    </span>
                   )}
                 </div>
-
-                <div>
-                  <div className="ev-sport-tag">
-                    <span style={{ fontSize: 11 }}>{sportIcon}</span>
-                    &nbsp;{tip.league}
-                  </div>
-                  <div className="ev-team-row">
-                    <div className="ev-teams">{home}</div>
-                  </div>
-                  {away && (
-                    <div className="ev-team-row">
-                      <div className="ev-teams">{away}</div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="ev-odds-row">
-                  <div className={`odd-btn${tip.selection.toLowerCase().includes('1') || tip.selection.toLowerCase().includes('home') ? ' best' : ''}`}>
-                    <div className="odd-lbl">1</div>
-                    <div className="odd-val">{o1.toFixed(2)}</div>
-                  </div>
-                  <div className="odd-btn">
-                    <div className="odd-lbl">X</div>
-                    <div className="odd-val">{oX}</div>
-                  </div>
-                  <div className={`odd-btn${tip.selection.toLowerCase().includes('2') || tip.selection.toLowerCase().includes('away') ? ' best' : ''}`}>
-                    <div className="odd-lbl">2</div>
-                    <div className="odd-val">{o2}</div>
-                  </div>
-                </div>
-
-                <div style={{ paddingLeft: 8 }}>
-                  <span style={{
-                    display: 'inline-block', marginBottom: 3,
-                    fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
-                    padding: '2px 6px', borderRadius: 3,
-                    background: bookStyle.bg, color: bookStyle.text,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {tip.book}
-                  </span>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{tip.market}</div>
-                </div>
-
-                <div className="ev-ev">
-                  <div className={`ev-badge ${evCls}`}>
-                    {formatEV(sanitizeEV(tip.ev), 0)}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-
-          {tips.length > 12 && (
-            <div style={{ padding: '12px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
-              <Link href={`/${locale}/tips${sportFilter !== 'all' ? `?sport=${sportFilter}` : ''}`}
-                style={{ fontSize: 11, color: 'var(--lime)', fontWeight: 700, textDecoration: 'none' }}>
-                Ver todas as {tips.length} tips →
-              </Link>
-            </div>
-          )}
-          </div>
-        </div>
-
-        {/* Right analysis panel */}
-        <div className="dash-right-panel">
-
-          {/* AI Analysis */}
-          {bestTip && (
-            <div className="rp-block">
-              <div className="rp-title">Análise IA</div>
-              <div className="ai-rec">
-                <div className="ai-rec-label">{bestTip.league} · {bestTip.market}</div>
-                <div className="ai-rec-tip">{bestTip.selection}</div>
-                {(() => {
-                  const safeProb = Math.max(0, Math.min(1, bestTip.probability));
-                  return [
-                    { key: 'prob-real',  label: <Tooltip content="Probabilidade calculada pelo OddSeek com base nas odds de várias casas.">Prob. real</Tooltip>,  val: `${(safeProb * 100).toFixed(0)}%`,          fill: Math.round(safeProb * 100),          color: 'var(--lime)' },
-                    { key: 'prob-impl',  label: <Tooltip content="Probabilidade implícita: o que a casa de apostas está dizendo ao oferecer essa odd.">Prob. impl.</Tooltip>, val: `${((1 / bestTip.odd) * 100).toFixed(0)}%`, fill: Math.round((1 / bestTip.odd) * 100), color: 'var(--muted)' },
-                    { key: 'confianca',  label: <Tooltip content="Índice OddSeek de 0 a 100 que combina a vantagem na odd com o histórico do mercado.">Confiança</Tooltip>,   val: `${bestTip.confidence}%`,                  fill: bestTip.confidence,                  color: 'var(--green)' },
-                  ];
-                })().map(row => (
-                  <div key={row.key} className="ai-prob-row">
-                    <div className="ai-prob-label">{row.label}</div>
-                    <div className="ai-prob-track">
-                      <div className="ai-prob-fill" style={{ width: `${row.fill}%`, background: row.color }} />
-                    </div>
-                    <div className="ai-prob-val" style={{ color: row.color }}>{row.val}</div>
-                  </div>
+              </div>
+              <div className="dash-chart-tabs">
+                {['7d', '30d', '90d', 'Tudo'].map((p, i) => (
+                  <div key={p} className={`h-tab${i === 1 ? ' on' : ''}`}>{p}</div>
                 ))}
-                <div className="conf-row">
-                  <div>
-                    <div className="conf-num">{bestTip.confidence}</div>
-                    <div className="conf-label"><Tooltip content="Índice OddSeek de 0 a 100.">Confiança</Tooltip></div>
-                  </div>
-                  <div className="conf-best">
-                    <div className="conf-odd">{bestTip.odd.toFixed(2)}</div>
-                    {(() => {
-                      const bs = BOOK_COLORS[bestTip.book] ?? { bg: '#3A3D45', text: '#fff' };
-                      return (
-                        <span style={{
-                          display: 'inline-block', marginTop: 4,
-                          fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
-                          padding: '3px 8px', borderRadius: 4,
-                          background: bs.bg, color: bs.text,
-                          textTransform: 'uppercase',
-                        }}>
-                          {bestTip.book}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                </div>
               </div>
             </div>
-          )}
 
-          {/* Odds comparison */}
-          <div className="rp-block">
-            <div className="rp-title">Comparação de odds</div>
-            {bestTip && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 10px', borderRadius: 6, marginBottom: 8,
-                background: 'var(--s2)', border: '1px solid var(--border)',
-              }}>
-                <span style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  {bestTip.league}
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--dim)' }}>·</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-cond)' }}>
-                  {bestTip.selection}
-                </span>
-              </div>
-            )}
-            {staticOdds.map(row => (
-              <div key={row.house} className="oc-row">
-                <div className="oc-house">{row.house}</div>
-                <div className="oc-bar-wrap">
-                  <div className={`oc-bar${row.best ? ' best-bar' : ''}`} style={{ width: `${row.fill}%` }} />
-                </div>
-                <div className="oc-val" style={{ color: row.best ? 'var(--lime)' : 'var(--text)' }}>{row.val}</div>
-                <div className="oc-ev" style={{
-                  color: row.best ? 'var(--lime)' : row.evPositive ? 'var(--green)' : 'var(--dim)',
-                  fontWeight: row.best ? 800 : 500,
-                }}>
-                  {row.ev}
-                </div>
-              </div>
-            ))}
-            <Link href={`/${locale}/odds`} style={{ display: 'block', marginTop: 8, fontSize: 11, color: 'var(--lime)', fontWeight: 700, textDecoration: 'none' }}>
-              Comparador completo →
-            </Link>
+            <svg className="dash-chart-svg" viewBox="0 0 720 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="dashGFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--lime)" stopOpacity=".25"/>
+                  <stop offset="100%" stopColor="var(--lime)" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <line x1="0" y1="50" x2="720" y2="50" stroke="var(--border)" strokeWidth="1"/>
+              <line x1="0" y1="110" x2="720" y2="110" stroke="var(--border)" strokeWidth="1"/>
+              <line x1="0" y1="170" x2="720" y2="170" stroke="var(--border)" strokeWidth="1"/>
+              {hasData ? (
+                <>
+                  <path d={chartFill} fill="url(#dashGFill)"/>
+                  <path d={chartPath} stroke="var(--lime)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx={chartLast.x} cy={chartLast.y} r="5" fill="var(--lime)"/>
+                  <circle cx={chartLast.x} cy={chartLast.y} r="10" fill="none" stroke="var(--lime)" strokeOpacity=".3"/>
+                  {chartProfit > 0 && (
+                    <g transform={`translate(${Math.min(chartLast.x - 40, 640)},${Math.max(chartLast.y - 28, 4)})`}>
+                      <rect x="0" y="0" width="76" height="22" rx="4" fill="var(--bg2)"/>
+                      <text x="38" y="15" fontFamily="Barlow Condensed, var(--font-cond)" fontSize="11" fontWeight="800" fill="var(--lime)" textAnchor="middle">+R$ {chartProfit.toFixed(0)}</text>
+                    </g>
+                  )}
+                </>
+              ) : (
+                <>
+                  <path d="M0 170 L80 160 L160 155 L240 150 L320 135 L400 140 L480 115 L560 95 L640 75 L720 55 L720 200 L0 200 Z" fill="url(#dashGFill)"/>
+                  <path d="M0 170 L80 160 L160 155 L240 150 L320 135 L400 140 L480 115 L560 95 L640 75 L720 55" stroke="var(--lime)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 4"/>
+                  <text x="360" y="100" fontFamily="Barlow Condensed, var(--font-cond)" fontSize="13" fontWeight="700" fill="var(--dim)" textAnchor="middle">Registre apostas para ver seu gráfico</text>
+                </>
+              )}
+            </svg>
+
+            <div className="dash-chart-foot">
+              <div><div className="dash-cf-l">Apostas</div><div className="dash-cf-v">{settled.length || '—'}</div></div>
+              <div><div className="dash-cf-l">Acertos</div><div className="dash-cf-v up">{wonCount || '—'}</div></div>
+              <div><div className="dash-cf-l">Erros</div><div className="dash-cf-v dn">{lostCount || '—'}</div></div>
+              <div><div className="dash-cf-l">Lucro líq.</div><div className={`dash-cf-v ${hasData ? (userProfit >= 0 ? 'up' : 'dn') : ''}`}>{hasData ? `${userProfit >= 0 ? '+' : ''}R$ ${Math.abs(userProfit).toFixed(0)}` : '—'}</div></div>
+            </div>
           </div>
 
-          {/* Alerts */}
-          <div className="rp-block">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div className="rp-title" style={{ margin: 0 }}>Alertas</div>
-              {bancaAlerts.length > 0 && (
-                <Link href={`/${locale}/banca`} style={{ fontSize: 10, color: 'var(--amber)', fontWeight: 700, textDecoration: 'none' }}>
-                  Ver banca →
-                </Link>
+          {/* Top pick + outras oportunidades */}
+          <div className="dash-rec-c">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-cond)', letterSpacing: '.04em', textTransform: 'uppercase' }}>
+                Top pick · Agora
+              </div>
+              {bestTip && (
+                <span style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', padding: '3px 9px', borderRadius: 20, background: 'oklch(80% 0.3 115 / 0.15)', color: 'var(--lime)', border: '1px solid oklch(80% 0.3 115 / 0.3)' }}>
+                  EV {formatEV(sanitizeEV(bestTip.ev))}
+                </span>
               )}
             </div>
-            {displayAlerts.slice(0, 5).map((alert, i) => (
-              <div key={i} className="alert-item">
-                <div className="alert-dot" style={{ background: alert.color }} />
-                <div>
-                  <div className="alert-txt">{alert.msg}</div>
-                  <div className="alert-time">{alert.time === 'agora' || alert.time === 'banca' ? alert.time : `${alert.time} atrás`}</div>
+
+            {bestTip ? (
+              <>
+                <div className="dash-rec-pick">
+                  <div className="dash-rec-tag">
+                    {bestTip.league} · {formatGameTimeBRT(bestTip.expiresAt)}
+                  </div>
+                  <div className="dash-rec-h">{bestTip.selection}</div>
+                  <div className="dash-rec-m">
+                    {bestTip.matchLabel.replace(/^[^\s]+\s/, '')} · {bestTip.book}
+                  </div>
+                  <div className="dash-rec-meta">
+                    <div className="dash-rec-mi">
+                      <span className="l">Odd</span>
+                      <span className="v">{bestTip.odd.toFixed(2)}</span>
+                    </div>
+                    <div className="dash-rec-mi">
+                      <span className="l">Justa</span>
+                      <span className="v">{(1 / bestTip.probability).toFixed(2)}</span>
+                    </div>
+                    <div className="dash-rec-mi">
+                      <span className="l">Confiança</span>
+                      <span className="v lime">{bestTip.confidence}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <Link href={`/${locale}/tips`} className="btn btn-ghost" style={{ justifyContent: 'center', fontSize: 12 }}>
+                    Análise IA
+                  </Link>
+                  <Link href={`/${locale}/tips`} className="btn btn-lime" style={{ justifyContent: 'center', fontSize: 12 }}>
+                    Apostar agora
+                  </Link>
+                </div>
+
+                {otherTips.length > 0 && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', fontFamily: 'var(--font-cond)', marginBottom: 8 }}>
+                      Outras oportunidades
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {otherTips.map(t => (
+                        <Link key={t.id} href={t.eventId ? `/${locale}/odds/${t.eventId}` : `/${locale}/tips`}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, textDecoration: 'none' }}>
+                          <span>
+                            <b style={{ fontFamily: 'var(--font-cond)', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text)' }}>
+                              {t.matchLabel.replace(/^[^\s]+\s/, '').slice(0, 22)}
+                            </b>
+                            <br/>
+                            <span style={{ color: 'var(--muted)', fontSize: 11 }}>{t.selection} · {t.league}</span>
+                          </span>
+                          <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 800, color: 'var(--lime)', fontSize: 14, flexShrink: 0, marginLeft: 8 }}>
+                            {formatEV(sanitizeEV(t.ev))}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                Nenhuma tip disponível no momento.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── EV List + Activity ── */}
+        <div className="dash-row-2-eq">
+
+          {/* EV opportunities list */}
+          <div className="dash-ev-list">
+            <div className="dash-ev-h">
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-cond)', letterSpacing: '.04em', textTransform: 'uppercase' }}>
+                Oportunidades EV+ ao vivo
+              </div>
+              <div style={{ display: 'flex', gap: 5 }}>
+                {['Todos', 'Futebol', 'NBA', 'Tênis'].map((tab, i) => (
+                  <div key={tab} className={`h-tab${i === 0 ? ' on' : ''}`} style={{ fontSize: 10 }}>{tab}</div>
+                ))}
+              </div>
+            </div>
+
+            {(highEVTips.length > 0 ? highEVTips : allTips.slice(0, 6)).map((tip, i) => {
+              const isLive = i < 1;
+              const match = tip.matchLabel.replace(/^[^\s]+\s/, '');
+              const parts = match.split(/ × | vs /i);
+              const home = parts[0]?.trim() ?? match;
+              const away = parts[1]?.trim() ?? '';
+              const sport = SPORT_ICONS[tip.sport] ?? '🎯';
+              const href = tip.eventId ? `/${locale}/odds/${tip.eventId}` : `/${locale}/tips`;
+              return (
+                <Link key={tip.id} href={href} className="dash-ev-row">
+                  <div className="dash-ev-team">
+                    <div className="dash-ev-tn">{home}{away ? ` × ${away}` : ''}</div>
+                    <div className="dash-ev-tm">
+                      {tip.league} · {isLive ? <span style={{ color: 'var(--red)' }}>● Ao vivo</span> : formatGameTimeBRT(tip.expiresAt)}
+                    </div>
+                  </div>
+                  <div className="dash-ev-pick">
+                    {tip.selection}
+                    <small>{tip.book} · justa {(1 / tip.probability).toFixed(2)}</small>
+                  </div>
+                  <div className="dash-ev-odd">{tip.odd.toFixed(2)}</div>
+                  <div className="dash-ev-num">{formatEV(sanitizeEV(tip.ev))}</div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Activity feed */}
+          <div className="dash-act">
+            <div className="dash-ev-h">
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-cond)', letterSpacing: '.04em', textTransform: 'uppercase' }}>
+                Atividade recente
+              </div>
+              <Link href={`/${locale}/banca/apostas`} style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)', textDecoration: 'none' }}>
+                Ver tudo
+              </Link>
+            </div>
+            {displayActivity.map((item, i) => (
+              <div key={i} className="dash-act-row">
+                <div className="dash-act-dot" style={{ background: item.dot }} />
+                <div className="dash-act-b">
+                  <div className="dash-act-t" dangerouslySetInnerHTML={{ __html: item.html }} />
+                  <div className="dash-act-tm">{item.time}</div>
                 </div>
               </div>
             ))}
           </div>
-
-          {/* Quick links */}
-          <div className="rp-block" style={{ borderBottom: 'none' }}>
-            <div className="rp-title">Acesso rápido</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { href: `/${locale}/tips`,      label: 'Ver todas as tips →' },
-                { href: `/${locale}/multiplas`, label: 'Parlays sugeridos →' },
-                { href: `/${locale}/banca`,     label: 'Minha banca →' },
-                { href: `/${locale}/odds`,      label: 'Comparador de odds →' },
-              ].map(l => (
-                <Link key={l.href} href={l.href}
-                  style={{ fontSize: 12, color: 'var(--lime)', fontWeight: 700, textDecoration: 'none' }}>
-                  {l.label}
-                </Link>
-              ))}
-            </div>
-          </div>
         </div>
+
+        {/* ── Promo / AI Insight ── */}
+        <div className="dash-promo">
+          <div className="dash-promo-num">+EV</div>
+          <div className="dash-promo-b">
+            <div className="dash-promo-t">Insight do dia · Modelo IA</div>
+            {topSport ? (
+              <>
+                <div className="dash-promo-h">
+                  Mercados de <em>{topSport.sport === 'football' ? 'futebol' : topSport.sport === 'basketball' ? 'basquete' : topSport.sport}</em> concentram{' '}
+                  <em>{topSport.count}</em> das maiores oportunidades EV+ agora.
+                </div>
+                <div className="dash-promo-p">
+                  Filtre por {topSport.sport === 'football' ? 'Futebol' : 'Basquete'} na aba Odds para ver todas as oportunidades identificadas.
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="dash-promo-h">
+                  Mercados de <em>over/under</em> estão precificados <em>2.4%</em> acima da probabilidade real esta semana.
+                </div>
+                <div className="dash-promo-p">
+                  Identificado em 28 das 31 partidas analisadas. Filtre por mercado no Comparador de Odds.
+                </div>
+              </>
+            )}
+          </div>
+          <Link href={`/${locale}/odds`} className="btn btn-ghost" style={{ flexShrink: 0, fontSize: 12 }}>
+            Ver mercados →
+          </Link>
+        </div>
+
       </div>
     </div>
   );
