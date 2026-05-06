@@ -4,11 +4,11 @@ import type { OddsMarket } from '@/lib/odds/types';
 
 interface OddsTableProps {
   markets: OddsMarket[];
-  /** Show only this market (if provided) */
   activeMarket?: string;
+  eventId?: string;
 }
 
-export function OddsTable({ markets, activeMarket }: OddsTableProps) {
+export function OddsTable({ markets, activeMarket, eventId }: OddsTableProps) {
   const visibleMarkets = activeMarket
     ? markets.filter(m => m.market === activeMarket)
     : markets;
@@ -101,6 +101,8 @@ export function OddsTable({ markets, activeMarket }: OddsTableProps) {
                         ev={b.ev}
                         isBest={b.isBest}
                         affiliateUrl={b.affiliateUrl}
+                        book={b.book}
+                        eventId={eventId}
                       />
                     ))}
                   </div>

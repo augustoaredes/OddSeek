@@ -1,3 +1,5 @@
+'use client';
+
 import { EVBadge } from './EVBadge';
 
 interface OddCellProps {
@@ -5,13 +7,30 @@ interface OddCellProps {
   ev: number;
   isBest: boolean;
   affiliateUrl: string;
+  book: string;
+  eventId?: string;
 }
 
-export function OddCell({ odd, ev, isBest, affiliateUrl }: OddCellProps) {
+export function OddCell({ odd, ev, isBest, affiliateUrl, book, eventId }: OddCellProps) {
+  async function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/afiliado/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ book, targetUrl: affiliateUrl, eventId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      window.open(data.url ?? affiliateUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      window.open(affiliateUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   return (
     <a
       href={affiliateUrl}
-      target="_blank"
+      onClick={handleClick}
       rel="sponsored noopener noreferrer"
       style={{
         display: 'flex',
@@ -27,32 +46,14 @@ export function OddCell({ odd, ev, isBest, affiliateUrl }: OddCellProps) {
         cursor: 'pointer',
         minWidth: 72,
       }}
-      title={`Apostar na ${isBest ? 'melhor odd' : ''} ${odd}`}
+      title={`Apostar ${odd.toFixed(2)} na ${book}`}
     >
-      <span
-        style={{
-          fontSize: 17,
-          fontWeight: 800,
-          fontFamily: 'var(--font-cond), Barlow Condensed, sans-serif',
-          color: isBest ? 'var(--lime)' : 'var(--text)',
-          letterSpacing: '-0.01em',
-          lineHeight: 1,
-        }}
-      >
+      <span style={{ fontSize: 17, fontWeight: 800, fontFamily: 'var(--font-cond), Barlow Condensed, sans-serif', color: isBest ? 'var(--lime)' : 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1 }}>
         {odd.toFixed(2)}
       </span>
       <EVBadge ev={ev} showNegative={false} />
       {isBest && (
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--lime)',
-            opacity: 0.8,
-          }}
-        >
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--lime)', opacity: 0.8 }}>
           MELHOR
         </span>
       )}

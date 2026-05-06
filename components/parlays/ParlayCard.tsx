@@ -7,6 +7,20 @@ import { EVBadge } from '@/components/odds/EVBadge';
 import { sanitizeEV } from '@/lib/analytics/ev';
 import type { SuggestedParlay } from '@/lib/tips/parlay-suggestions';
 
+async function trackAndOpen(book: string, affiliateUrl: string, parlayId?: string) {
+  try {
+    const res = await fetch('/api/afiliado/click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ book, targetUrl: affiliateUrl, parlayId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    window.open(data.url ?? affiliateUrl, '_blank', 'noopener,noreferrer');
+  } catch {
+    window.open(affiliateUrl, '_blank', 'noopener,noreferrer');
+  }
+}
+
 const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
   'Bet365':            { bg: '#00843D', text: '#fff' },
   'Betano':            { bg: '#E30613', text: '#fff' },
@@ -170,10 +184,13 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
       {/* CTAs */}
       <div style={{ display: 'flex', gap: 8 }}>
         {parlay.legs[0]?.tip?.affiliateUrl && (
-          <a
-            href={parlay.legs[0].tip.affiliateUrl}
-            target="_blank"
-            rel="sponsored noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => trackAndOpen(
+              parlay.legs[0].tip.book ?? '',
+              parlay.legs[0].tip.affiliateUrl!,
+              parlay.id,
+            )}
             style={{
               flex: 1,
               padding: '12px 0',
@@ -193,7 +210,7 @@ export function ParlayCard({ parlay }: ParlayCardProps) {
             }}
           >
             Apostar →
-          </a>
+          </button>
         )}
         <button
           onClick={handleSelect}
