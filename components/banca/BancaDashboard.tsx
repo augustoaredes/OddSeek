@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { loadBets, saveBets, loadInitialBankroll, buildEquityCurve, toSettledBet } from '@/lib/banca/store';
 import type { BankBet } from '@/lib/banca/store';
 import { totalProfit, roi as calcROI, hitRate, averageOdd } from '@/lib/banca/metrics';
+import { generateAlerts } from '@/lib/banca/alerts';
 import { BetFormModal } from './BetFormModal';
 
 const statusLabel = (s: string) =>
@@ -208,6 +209,11 @@ export function BancaDashboard({ locale }: { locale: string }) {
     [...bets].sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime()),
     [bets]);
 
+  const bancaAlerts = useMemo(
+    () => generateAlerts(settled, currentBalance, initialBankroll, kellyResult),
+    [settled, currentBalance, initialBankroll, kellyResult],
+  );
+
   const progressPct = Math.min(100, Math.max(0,
     ((currentBalance - initialBankroll * 0.5) / (initialBankroll * 1.5 - initialBankroll * 0.5)) * 100
   ));
@@ -378,6 +384,51 @@ export function BancaDashboard({ locale }: { locale: string }) {
 
           {/* Right sidebar */}
           <div className="banca-side-col">
+
+            {/* Risk alerts */}
+            {bancaAlerts.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
+                {bancaAlerts.map((alert, i) => {
+                  const colors = {
+                    info:     { bg: 'oklch(65% 0.2 240 / 0.10)', border: 'oklch(65% 0.2 240 / 0.3)', text: 'var(--blue)' },
+                    warning:  { bg: 'oklch(70% 0.18 60 / 0.10)',  border: 'oklch(70% 0.18 60 / 0.3)',  text: 'var(--amber)' },
+                    critical: { bg: 'oklch(50% 0.28 25 / 0.12)',  border: 'oklch(50% 0.28 25 / 0.35)', text: 'var(--red)' },
+                  }[alert.severity];
+                  const icon = { info: 'ℹ', warning: '⚠', critical: '🚨' }[alert.severity];
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        background: colors.bg,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: 10,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        gap: 10,
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.4 }}>{icon}</span>
+                      <div>
+                        <div style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          color: colors.text,
+                          marginBottom: 2,
+                        }}>
+                          {alert.severity === 'critical' ? 'Alerta crítico' : alert.severity === 'warning' ? 'Atenção' : 'Info'}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+                          {alert.message}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Banca summary */}
             <div className="sp-block">
