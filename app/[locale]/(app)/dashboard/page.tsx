@@ -1,9 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
+import { auth } from '@/lib/auth';
+import { getDb } from '@/lib/db/client';
+import { bets as betsTable, bankrolls } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { getTips } from '@/lib/tips/fetcher';
 import { formatGameTimeBRT } from '@/lib/utils/date';
 import { sanitizeEV, formatEV } from '@/lib/analytics/ev';
+import { roi as calcROI, totalProfit } from '@/lib/banca/metrics';
+import { generateAlerts } from '@/lib/banca/alerts';
+import type { BancaAlert } from '@/lib/banca/alerts';
+import type { SettledBet } from '@/lib/banca/metrics';
 import { Tooltip } from '@/components/ui/Tooltip';
 
 const BOOK_COLORS: Record<string, { bg: string; text: string }> = {
@@ -43,7 +51,7 @@ const SPORT_FILTERS = [
   { value: 'mma',        label: 'MMA',      icon: '🥊', dot: '#f87171' },
 ];
 
-// Static odds comparison — EVs calculados com prob. implícita da melhor odd (2.10 → prob ~0.62 devigorizada)
+// Static odds comparison for demo (used when no real tip odds available)
 const COMPARE_PROB = 0.62;
 const compareOdds = [
   { house: 'Bet365',            odd: 2.10 },
@@ -66,12 +74,12 @@ const staticOdds = compareOdds.map(r => {
   };
 });
 
-const staticAlerts = [
-  { msg: 'Odd subiu para melhor nível nas últimas 2h',    time: '2m',  color: 'var(--green)' },
-  { msg: 'Nova análise EV+ identificada em Futebol',      time: '8m',  color: 'var(--lime)'  },
-  { msg: 'Escalação confirmada — verificar apostas open', time: '23m', color: 'var(--amber)' },
-  { msg: 'Resultado atualizado para aposta encerrada',    time: '1h',  color: 'var(--muted)' },
-];
+function getGreeting(name?: string | null): string {
+  const h = new Date().getHours();
+  const period = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const first = name?.split(' ')[0];
+  return first ? `${period}, ${first}` : period;
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -83,14 +91,55 @@ export default async function DashboardPage({
   const sportFilter  = sp.sport  ?? 'all';
   const leagueFilter = sp.league ?? 'all';
 
+  // ── Auth + user banca data ──────────────────────────────────────────────────
+  const session = await auth();
+  let userROI         = 0;
+  let userBetCount    = 0;
+  let userBalance     = 0;
+  let userInitial     = 0;
+  let userPending     = 0;
+  let bancaAlerts: BancaAlert[] = [];
+
+  if (session?.user?.id) {
+    try {
+      const db = getDb();
+      const [userBets, bankrollRows] = await Promise.all([
+        db.select().from(betsTable)
+          .where(eq(betsTable.userId, session.user.id))
+          .orderBy(desc(betsTable.placedAt))
+          .limit(100),
+        db.select().from(bankrolls)
+          .where(eq(bankrolls.userId, session.user.id))
+          .limit(1),
+      ]);
+
+      const settled: SettledBet[] = userBets
+        .filter(b => b.status !== 'pending')
+        .map(b => ({
+          status: b.status as SettledBet['status'],
+          odd: Number(b.odd),
+          stake: Number(b.stake),
+        }));
+
+      userROI      = calcROI(settled);
+      userBetCount = settled.length;
+      userPending  = userBets.filter(b => b.status === 'pending').length;
+
+      if (bankrollRows[0]) {
+        userBalance = Number(bankrollRows[0].currentAmount);
+        userInitial = Number(bankrollRows[0].initialAmount);
+        bancaAlerts = generateAlerts(settled, userBalance, userInitial, 0);
+      }
+    } catch { /* non-blocking */ }
+  }
+
+  // ── Tips data ───────────────────────────────────────────────────────────────
   const allTips = await getTips();
   let tips = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
   if (leagueFilter !== 'all') tips = tips.filter(t => t.league === leagueFilter);
 
-  // Unique leagues for current sport selection
-  const sportBase = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
-  const leagues = ['all', ...Array.from(new Set(sportBase.map(t => t.league))).sort()];
-
+  const sportBase  = sportFilter === 'all' ? allTips : allTips.filter(t => t.sport === sportFilter);
+  const leagues    = ['all', ...Array.from(new Set(sportBase.map(t => t.league))).sort()];
   const positiveEV = allTips.filter(t => sanitizeEV(t.ev) > 0);
   const elite      = allTips.filter(t => t.confidenceBand === 'elite');
   const bestTip    = allTips[0] ?? null;
@@ -98,10 +147,31 @@ export default async function DashboardPage({
     ? positiveEV.reduce((s, t) => s + sanitizeEV(t.ev), 0) / positiveEV.length
     : 0;
   const bestOdd    = allTips.length > 0 ? allTips.reduce((b, t) => t.odd > b.odd ? t : b, allTips[0]) : null;
-
+  const highEVTips = allTips.filter(t => sanitizeEV(t.ev) >= 0.08);
+  const liveCount  = Math.min(allTips.length, 3);
   const displayTips = tips.slice(0, 12);
 
-  // Build href helper for filters
+  // ── Alerts (banca + tips) ───────────────────────────────────────────────────
+  const tipAlerts = highEVTips.slice(0, 3).map(t => ({
+    msg: `EV ${formatEV(sanitizeEV(t.ev))} · ${t.matchLabel.replace(/^[^\s]+\s/, '').slice(0, 30)} — ${t.book}`,
+    time: 'agora',
+    color: sanitizeEV(t.ev) >= 0.10 ? 'var(--lime)' : 'var(--green)',
+  }));
+  const alertItems = [
+    ...bancaAlerts.map(a => ({
+      msg: a.message,
+      time: 'banca',
+      color: a.severity === 'critical' ? 'var(--red)' : a.severity === 'warning' ? 'var(--amber)' : 'var(--blue)',
+    })),
+    ...tipAlerts,
+  ];
+  const displayAlerts = alertItems.length > 0 ? alertItems : [
+    { msg: 'Odd subiu para melhor nível nas últimas 2h',    time: '2m',  color: 'var(--green)' },
+    { msg: 'Nova análise EV+ identificada em Futebol',      time: '8m',  color: 'var(--lime)'  },
+    { msg: 'Escalação confirmada — verificar apostas open', time: '23m', color: 'var(--amber)' },
+  ];
+
+  // ── Build href helper ───────────────────────────────────────────────────────
   function dashHref(patch: Record<string, string>) {
     const p = new URLSearchParams();
     const s = patch.sport  ?? sportFilter;
@@ -112,12 +182,50 @@ export default async function DashboardPage({
     return `/${locale}/dashboard${q ? `?${q}` : ''}`;
   }
 
-  // Live tips count and high-EV count for the banner
-  const liveCount  = Math.min(allTips.length, 3);
-  const highEVTips = allTips.filter(t => sanitizeEV(t.ev) >= 0.08);
+  const greeting = getGreeting(session?.user?.name);
+  const hasRealPerf = userBetCount > 0;
 
   return (
     <div className="page-full">
+
+      {/* ── Saudação personalizada ── */}
+      {session?.user && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 20px 8px',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}>
+          <div>
+            <div style={{
+              fontFamily: 'var(--font-cond)', fontSize: 20, fontWeight: 900,
+              textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)',
+            }}>
+              {greeting}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+              {userPending > 0
+                ? `${userPending} aposta${userPending > 1 ? 's' : ''} aberta${userPending > 1 ? 's' : ''}${userBalance > 0 ? ` · Banca: R$${userBalance.toFixed(0)}` : ''}`
+                : userBalance > 0
+                  ? `Banca atual: R$${userBalance.toFixed(0)}`
+                  : `${allTips.length} tips disponíveis · ${highEVTips.length} com EV > 8%`
+              }
+            </div>
+          </div>
+          {bancaAlerts.some(a => a.severity === 'critical' || a.severity === 'warning') && (
+            <Link href={`/${locale}/banca`} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 8,
+              background: 'oklch(70% 0.18 60 / 0.10)',
+              border: '1px solid oklch(70% 0.18 60 / 0.35)',
+              color: 'var(--amber)', fontSize: 11, fontWeight: 700,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+            }}>
+              ⚠ {bancaAlerts.filter(a => a.severity !== 'info').length} alerta{bancaAlerts.filter(a => a.severity !== 'info').length > 1 ? 's' : ''} na banca →
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* ── Faixa de oportunidades ao vivo ── */}
       {liveCount > 0 && (
@@ -151,7 +259,9 @@ export default async function DashboardPage({
           <div className="sc-sub">↑ {positiveEV.length} com EV+</div>
         </div>
         <div className="stat-card">
-          <div className="sc-label"><Tooltip content="Valor Esperado médio: indica o quanto as odds estão acima do risco real. Positivo = vantagem para você.">EV médio</Tooltip></div>
+          <div className="sc-label">
+            <Tooltip content="Valor Esperado médio: indica o quanto as odds estão acima do risco real. Positivo = vantagem para você.">EV médio</Tooltip>
+          </div>
           <div className="sc-val" style={{ color: 'var(--green)' }}>
             {avgEV > 0 ? formatEV(avgEV) : '—'}
           </div>
@@ -163,15 +273,26 @@ export default async function DashboardPage({
           <div className="sc-sub">{bestOdd ? bestOdd.matchLabel.replace(/^[^\s]+\s/, '').slice(0, 22) : '—'}</div>
         </div>
         <div className="stat-card">
-          <div className="sc-label">Performance 14d</div>
-          <div className="sc-val" style={{ color: 'var(--blue)' }}>+18.4%</div>
-          <div className="sc-sub">ROI · 30 apostas</div>
+          <div className="sc-label">
+            {hasRealPerf ? 'Meu ROI total' : 'Performance 14d'}
+          </div>
+          <div className="sc-val" style={{ color: hasRealPerf ? (userROI >= 0 ? 'var(--blue)' : 'var(--red)') : 'var(--blue)' }}>
+            {hasRealPerf
+              ? `${userROI >= 0 ? '+' : ''}${userROI.toFixed(1)}%`
+              : '+18.4%'
+            }
+          </div>
+          <div className="sc-sub">
+            {hasRealPerf
+              ? `ROI · ${userBetCount} aposta${userBetCount !== 1 ? 's' : ''} fechada${userBetCount !== 1 ? 's' : ''}`
+              : 'ROI · dados de exemplo'
+            }
+          </div>
         </div>
       </div>
 
       {/* ── Filter bar ── */}
       <div className="filter-bar" style={{ padding: '10px 0 0', borderBottom: '1px solid var(--border)', marginLeft: 0 }}>
-        {/* Linha 1: esporte */}
         <div style={{ display: 'flex', gap: 6, padding: '0 0 8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {SPORT_FILTERS.map(f => (
             <Link key={f.value} href={dashHref({ sport: f.value, league: 'all' })}
@@ -190,7 +311,6 @@ export default async function DashboardPage({
           </span>
         </div>
 
-        {/* Linha 2: campeonato/liga (só aparece se há mais de um) */}
         {leagues.length > 2 && (
           <div style={{ display: 'flex', gap: 6, padding: '0 0 10px', overflowX: 'auto', scrollbarWidth: 'none' }}>
             {leagues.map(lg => (
@@ -215,9 +335,7 @@ export default async function DashboardPage({
 
         {/* Events list */}
         <div className="dash-events">
-          {/* Scroll wrapper — header + rows share same min-width so columns stay aligned */}
           <div style={{ minWidth: 560, overflow: 'visible' }}>
-          {/* Table header */}
           <div className="ev-table-head" style={{ padding: '8px 0' }}>
             <div className="eth">Hora</div>
             <div className="eth">Partida</div>
@@ -231,27 +349,26 @@ export default async function DashboardPage({
               Nenhuma tip disponível para este filtro.
             </div>
           ) : displayTips.map((tip, i) => {
-            const dotColor = SPORT_DOTS[tip.sport] ?? '#8A8780';
-            const isLive   = i < 2;
-            const match    = tip.matchLabel.replace(/^[^\s]+\s/, '');
-            const parts    = match.split(/ × | vs /i);
-            const home     = parts[0]?.trim() ?? match;
-            const away     = parts[1]?.trim() ?? '';
-            const evCls    = tip.ev >= 0.10 ? 'hi' : tip.ev >= 0.02 ? 'pos' : 'low';
-
-            // Synthetic 1/X/2 odds from the one real odd we have
-            const o1 = tip.odd;
-            const oX = +(tip.odd * 0.62 + 0.3).toFixed(2);
-            const o2 = +(tip.odd * 0.48 + 0.2).toFixed(2);
-
+            const dotColor  = SPORT_DOTS[tip.sport] ?? '#8A8780';
+            const isLive    = i < 2;
+            const match     = tip.matchLabel.replace(/^[^\s]+\s/, '');
+            const parts     = match.split(/ × | vs /i);
+            const home      = parts[0]?.trim() ?? match;
+            const away      = parts[1]?.trim() ?? '';
+            const evCls     = tip.ev >= 0.10 ? 'hi' : tip.ev >= 0.02 ? 'pos' : 'low';
+            const o1        = tip.odd;
+            const oX        = +(tip.odd * 0.62 + 0.3).toFixed(2);
+            const o2        = +(tip.odd * 0.48 + 0.2).toFixed(2);
             const bookStyle = BOOK_COLORS[tip.book] ?? { bg: '#3A3D45', text: '#fff' };
             const sportIcon = SPORT_ICONS[tip.sport] ?? '🎯';
+            const href      = tip.eventId
+              ? `/${locale}/odds/${tip.eventId}`
+              : `/${locale}/tips`;
 
             return (
-              <Link key={tip.id} href={`/${locale}/tips`}
+              <Link key={tip.id} href={href}
                 className="event-row" style={{ textDecoration: 'none', display: 'grid', gridTemplateColumns: '68px 1fr 148px 110px 56px', alignItems: 'center', padding: '0', minHeight: 58, borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .12s' }}>
 
-                {/* Time */}
                 <div>
                   {isLive ? (
                     <div className="ev-live-badge">
@@ -263,7 +380,6 @@ export default async function DashboardPage({
                   )}
                 </div>
 
-                {/* Match */}
                 <div>
                   <div className="ev-sport-tag">
                     <span style={{ fontSize: 11 }}>{sportIcon}</span>
@@ -279,7 +395,6 @@ export default async function DashboardPage({
                   )}
                 </div>
 
-                {/* 1/X/2 */}
                 <div className="ev-odds-row">
                   <div className={`odd-btn${tip.selection.toLowerCase().includes('1') || tip.selection.toLowerCase().includes('home') ? ' best' : ''}`}>
                     <div className="odd-lbl">1</div>
@@ -295,7 +410,6 @@ export default async function DashboardPage({
                   </div>
                 </div>
 
-                {/* Book */}
                 <div style={{ paddingLeft: 8 }}>
                   <span style={{
                     display: 'inline-block', marginBottom: 3,
@@ -309,7 +423,6 @@ export default async function DashboardPage({
                   <div style={{ fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{tip.market}</div>
                 </div>
 
-                {/* EV */}
                 <div className="ev-ev">
                   <div className={`ev-badge ${evCls}`}>
                     {formatEV(sanitizeEV(tip.ev), 0)}
@@ -327,7 +440,7 @@ export default async function DashboardPage({
               </Link>
             </div>
           )}
-          </div>{/* end scroll wrapper */}
+          </div>
         </div>
 
         {/* Right analysis panel */}
@@ -343,9 +456,9 @@ export default async function DashboardPage({
                 {(() => {
                   const safeProb = Math.max(0, Math.min(1, bestTip.probability));
                   return [
-                    { key: 'prob-real',  label: <Tooltip content="Probabilidade calculada pelo OddSeek com base nas odds de várias casas — o quanto a equipe realmente tem de chance.">Prob. real</Tooltip>,  val: `${(safeProb * 100).toFixed(0)}%`,             fill: Math.round(safeProb * 100),             color: 'var(--lime)' },
-                    { key: 'prob-impl',  label: <Tooltip content="Probabilidade implícita: o que a casa de apostas 'está dizendo' ao oferecer essa odd. Se for menor que a prob. real, há vantagem.">Prob. impl.</Tooltip>, val: `${((1 / bestTip.odd) * 100).toFixed(0)}%`,    fill: Math.round((1 / bestTip.odd) * 100),    color: 'var(--muted)' },
-                    { key: 'confianca',  label: <Tooltip content="Índice OddSeek de 0 a 100 que combina a vantagem na odd com o histórico do mercado. Quanto maior, mais confiante.">Confiança</Tooltip>,   val: `${bestTip.confidence}%`,                       fill: bestTip.confidence,                      color: 'var(--green)' },
+                    { key: 'prob-real',  label: <Tooltip content="Probabilidade calculada pelo OddSeek com base nas odds de várias casas.">Prob. real</Tooltip>,  val: `${(safeProb * 100).toFixed(0)}%`,          fill: Math.round(safeProb * 100),          color: 'var(--lime)' },
+                    { key: 'prob-impl',  label: <Tooltip content="Probabilidade implícita: o que a casa de apostas está dizendo ao oferecer essa odd.">Prob. impl.</Tooltip>, val: `${((1 / bestTip.odd) * 100).toFixed(0)}%`, fill: Math.round((1 / bestTip.odd) * 100), color: 'var(--muted)' },
+                    { key: 'confianca',  label: <Tooltip content="Índice OddSeek de 0 a 100 que combina a vantagem na odd com o histórico do mercado.">Confiança</Tooltip>,   val: `${bestTip.confidence}%`,                  fill: bestTip.confidence,                  color: 'var(--green)' },
                   ];
                 })().map(row => (
                   <div key={row.key} className="ai-prob-row">
@@ -359,7 +472,7 @@ export default async function DashboardPage({
                 <div className="conf-row">
                   <div>
                     <div className="conf-num">{bestTip.confidence}</div>
-                    <div className="conf-label"><Tooltip content="Índice OddSeek de 0 a 100 que combina a vantagem na odd com o histórico do mercado. Quanto maior, mais confiante.">Confiança</Tooltip></div>
+                    <div className="conf-label"><Tooltip content="Índice OddSeek de 0 a 100.">Confiança</Tooltip></div>
                   </div>
                   <div className="conf-best">
                     <div className="conf-odd">{bestTip.odd.toFixed(2)}</div>
@@ -386,7 +499,6 @@ export default async function DashboardPage({
           {/* Odds comparison */}
           <div className="rp-block">
             <div className="rp-title">Comparação de odds</div>
-            {/* Contexto: qual jogo/seleção está sendo comparado */}
             {bestTip && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -417,17 +529,27 @@ export default async function DashboardPage({
                 </div>
               </div>
             ))}
+            <Link href={`/${locale}/odds`} style={{ display: 'block', marginTop: 8, fontSize: 11, color: 'var(--lime)', fontWeight: 700, textDecoration: 'none' }}>
+              Comparador completo →
+            </Link>
           </div>
 
           {/* Alerts */}
           <div className="rp-block">
-            <div className="rp-title">Alertas</div>
-            {staticAlerts.map((alert, i) => (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div className="rp-title" style={{ margin: 0 }}>Alertas</div>
+              {bancaAlerts.length > 0 && (
+                <Link href={`/${locale}/banca`} style={{ fontSize: 10, color: 'var(--amber)', fontWeight: 700, textDecoration: 'none' }}>
+                  Ver banca →
+                </Link>
+              )}
+            </div>
+            {displayAlerts.slice(0, 5).map((alert, i) => (
               <div key={i} className="alert-item">
                 <div className="alert-dot" style={{ background: alert.color }} />
                 <div>
                   <div className="alert-txt">{alert.msg}</div>
-                  <div className="alert-time">{alert.time} atrás</div>
+                  <div className="alert-time">{alert.time === 'agora' || alert.time === 'banca' ? alert.time : `${alert.time} atrás`}</div>
                 </div>
               </div>
             ))}
@@ -441,6 +563,7 @@ export default async function DashboardPage({
                 { href: `/${locale}/tips`,      label: 'Ver todas as tips →' },
                 { href: `/${locale}/multiplas`, label: 'Parlays sugeridos →' },
                 { href: `/${locale}/banca`,     label: 'Minha banca →' },
+                { href: `/${locale}/odds`,      label: 'Comparador de odds →' },
               ].map(l => (
                 <Link key={l.href} href={l.href}
                   style={{ fontSize: 12, color: 'var(--lime)', fontWeight: 700, textDecoration: 'none' }}>
