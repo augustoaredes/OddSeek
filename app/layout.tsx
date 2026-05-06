@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Barlow, Barlow_Condensed, Instrument_Serif, Space_Grotesk } from 'next/font/google';
+import { SessionProvider } from '@/components/providers/SessionProvider';
 import './globals.css';
 
 const barlow = Barlow({
@@ -75,7 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* Runs before React hydration to prevent flash of wrong theme */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme')||'light';document.documentElement.dataset.theme=t;}catch(e){}})();` }} />
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

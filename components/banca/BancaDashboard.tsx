@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { loadBets, saveBets, loadInitialBankroll, buildEquityCurve, toSettledBet } from '@/lib/banca/store';
 import type { BankBet } from '@/lib/banca/store';
 import { totalProfit, roi as calcROI, hitRate, averageOdd } from '@/lib/banca/metrics';
@@ -61,7 +62,30 @@ function EquityCurveChart({ curve, initial }: { curve: { balance: number }[]; in
   );
 }
 
+// Converte aposta do DB para o formato BankBet usado internamente
+function dbBetToBankBet(row: Record<string, unknown>): BankBet {
+  return {
+    id:         String(row.id),
+    sport:      String(row.sport ?? ''),
+    league:     String(row.league ?? ''),
+    matchLabel: String(row.eventLabel ?? row.matchLabel ?? ''),
+    market:     String(row.market ?? ''),
+    selection:  String(row.selection ?? ''),
+    book:       String(row.book ?? ''),
+    odd:        Number(row.odd),
+    stake:      Number(row.stake),
+    status:     (row.status as BankBet['status']) ?? 'pending',
+    profit:     row.profit != null ? Number(row.profit) : undefined,
+    placedAt:   row.placedAt ? new Date(row.placedAt as string).toISOString() : new Date().toISOString(),
+    settledAt:  row.settledAt ? new Date(row.settledAt as string).toISOString() : undefined,
+    source:     (row.source as BankBet['source']) ?? 'manual',
+  };
+}
+
 export function BancaDashboard({ locale }: { locale: string }) {
+  const { data: session, status: sessionStatus } = useSession();
+  const isAuth = sessionStatus === 'authenticated';
+
   const [bets,            setBets]            = useState<BankBet[]>([]);
   const [initialBankroll, setInitialBankroll] = useState(2000);
   const [showForm,        setShowForm]        = useState(false);
@@ -70,10 +94,28 @@ export function BancaDashboard({ locale }: { locale: string }) {
   const [kellyProb,       setKellyProb]       = useState('54');
 
   useEffect(() => {
-    setBets(loadBets());
-    setInitialBankroll(loadInitialBankroll());
-    setHydrated(true);
-  }, []);
+    if (sessionStatus === 'loading') return;
+
+    if (isAuth) {
+      // Carrega do banco de dados
+      Promise.all([
+        fetch('/api/banca/apostas').then(r => r.json()),
+        fetch('/api/banca/bankroll').then(r => r.json()),
+      ]).then(([apostas, bankroll]) => {
+        if (Array.isArray(apostas)) setBets(apostas.map(dbBetToBankBet));
+        if (bankroll?.initialAmount) setInitialBankroll(bankroll.initialAmount);
+        setHydrated(true);
+      }).catch(() => {
+        setBets(loadBets());
+        setInitialBankroll(loadInitialBankroll());
+        setHydrated(true);
+      });
+    } else {
+      setBets(loadBets());
+      setInitialBankroll(loadInitialBankroll());
+      setHydrated(true);
+    }
+  }, [sessionStatus, isAuth]);
 
   const { settled, profit, currentBalance, roiValue, hr, pending, won, lost, avgOdd, bestBet, equityCurve } =
     useMemo(() => {
@@ -93,13 +135,51 @@ export function BancaDashboard({ locale }: { locale: string }) {
       return { settled: nonNull, profit, currentBalance, roiValue, hr, pending, won, lost, avgOdd, bestBet, equityCurve };
     }, [bets, initialBankroll]);
 
-  function addBet(bet: BankBet) {
+  async function addBet(bet: BankBet) {
+    if (isAuth) {
+      try {
+        const res = await fetch('/api/banca/apostas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sport:      bet.sport,
+            league:     bet.league,
+            eventLabel: bet.matchLabel,
+            market:     bet.market,
+            selection:  bet.selection,
+            book:       bet.book,
+            odd:        bet.odd,
+            stake:      bet.stake,
+            source:     bet.source ?? 'manual',
+          }),
+        });
+        if (res.ok) {
+          const saved = await res.json();
+          setBets(prev => [dbBetToBankBet(saved), ...prev]);
+          return;
+        }
+      } catch { /* fallthrough */ }
+    }
     const next = [bet, ...bets];
     setBets(next);
     saveBets(next);
   }
 
-  function updateStatus(id: string, status: BankBet['status']) {
+  async function updateStatus(id: string, status: BankBet['status']) {
+    if (isAuth) {
+      try {
+        const res = await fetch(`/api/banca/apostas/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setBets(prev => prev.map(b => b.id === id ? dbBetToBankBet(updated) : b));
+          return;
+        }
+      } catch { /* fallthrough */ }
+    }
     const next = bets.map(b => b.id === id
       ? { ...b, status, settledAt: new Date().toISOString() }
       : b);
@@ -107,10 +187,15 @@ export function BancaDashboard({ locale }: { locale: string }) {
     saveBets(next);
   }
 
-  function deleteBet(id: string) {
+  async function deleteBet(id: string) {
+    if (isAuth) {
+      try {
+        await fetch(`/api/banca/apostas/${id}`, { method: 'DELETE' });
+      } catch { /* fallthrough */ }
+    }
     const next = bets.filter(b => b.id !== id);
     setBets(next);
-    saveBets(next);
+    if (!isAuth) saveBets(next);
   }
 
   const kellyResult = useMemo(() => {

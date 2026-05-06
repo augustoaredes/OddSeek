@@ -11,7 +11,7 @@
  * merge by fixtureId, convert to OddsEvent[].
  */
 
-import { consensusProbability } from '@/lib/analytics/probability';
+import { weightedConsensusProbability } from '@/lib/analytics/probability';
 import { calculateEV } from '@/lib/analytics/ev';
 import type { OddsEvent, OddsMarket, OddsSelection, BookOdd, Sport, Market } from '../types';
 
@@ -182,7 +182,7 @@ function buildMarketFromId(
 
   const selections: OddsSelection[] = outcomeIds.map((outcomeId, idx) => {
     const label = OUTCOME_LABELS[outcomeId] ?? `Outcome ${outcomeId}`;
-    const consensusProb = consensusProbability(oddsMatrix, idx);
+    const consensusProb = weightedConsensusProbability(oddsMatrix, idx);
 
     let bestOdd = 0;
     let bestBook = '';

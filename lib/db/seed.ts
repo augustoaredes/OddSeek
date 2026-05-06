@@ -118,23 +118,52 @@ async function main() {
   await db.insert(oddsSnapshots).values(oddsRows);
 
   // ── Tips ──────────────────────────────────────────────────────────────────
-  const tipRows = [];
-  for (let i = 0; i < 25; i++) {
+  // Metodologia correta: parte da probabilidade verdadeira → deriva odds com margem → cria outlier
+  //
+  //  1. trueProb  = probabilidade justa do outcome (30-75%)
+  //  2. fairOdd   = 1 / trueProb  (odd sem margem)
+  //  3. bookOdd   = fairOdd / (1 + margin)  — como books comprimem as odds (5-8%)
+  //  4. valueOdd  = fairOdd × (1 + bonus)   — book "soft" oferece 2-8% acima do fair
+  //  5. EV        = trueProb × valueOdd - 1 → naturalmente em 0.3%–9%
+  //
+  // Isso elimina os EVs absurdos (100%+) que ocorriam quando odd e probability
+  // eram gerados de forma completamente independente.
+  const tipRows: Array<{
+    eventId: string; market: string; selection: string; book: string;
+    odd: number; probability: number; ev: number;
+    confidenceBand: 'high' | 'highlight' | 'value'; expiresAt: Date;
+  }> = [];
+  let attempts = 0;
+  while (tipRows.length < 25 && attempts < 300) {
+    attempts++;
     const evt = insertedEvents[Math.floor(Math.random() * insertedEvents.length)];
-    const odd = parseFloat((1.5 + Math.random() * 2).toFixed(2));
-    const probability = parseFloat((0.35 + Math.random() * 0.3).toFixed(4));
-    const ev = parseFloat((probability * odd - 1).toFixed(4));
-    if (ev <= 0) continue;
-    const confidenceBand =
-      ev > 0.1 ? ('high' as const) : ev > 0.05 ? ('highlight' as const) : ('value' as const);
+
+    // Probabilidade verdadeira do outcome (mercados equilibrados 30-70%, favoritos até 75%)
+    const trueProb = 0.30 + Math.random() * 0.45;
+    const fairOdd  = 1 / trueProb;
+
+    // Book de valor: oferece odds levemente acima do fair (2-8% de bônus)
+    const outlierBonus = 0.020 + Math.random() * 0.060;
+    const valueOdd = parseFloat((fairOdd * (1 + outlierBonus)).toFixed(2));
+    if (valueOdd <= 1.05) continue; // odd inválida
+
+    const ev = parseFloat((trueProb * valueOdd - 1).toFixed(4));
+
+    // Faixa realista de EV: 0.3% a 9%
+    if (ev < 0.003 || ev > 0.090) continue;
+
+    const book = BOOKS[Math.floor(Math.random() * BOOKS.length)];
+    const confidenceBand: 'high' | 'highlight' | 'value' =
+      ev > 0.06 ? 'high' : ev > 0.035 ? 'highlight' : 'value';
     const expiresAt = new Date(evt.startsAt.getTime() + 90 * 60 * 1000);
+
     tipRows.push({
       eventId: evt.id,
       market: MARKETS[Math.floor(Math.random() * MARKETS.length)],
       selection: 'Home',
-      book: BOOKS[Math.floor(Math.random() * BOOKS.length)],
-      odd,
-      probability,
+      book,
+      odd: valueOdd,
+      probability: parseFloat(trueProb.toFixed(4)),
       ev,
       confidenceBand,
       expiresAt,

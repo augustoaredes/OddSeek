@@ -109,7 +109,7 @@ export function RegisterForm({ locale, defaultEmail = '', defaultPlan = 'pro' }:
         redirect: false,
       });
 
-      router.push(`/${locale}/dashboard`);
+      router.push(`/${locale}/onboarding`);
     });
   }
 

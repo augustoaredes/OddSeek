@@ -7,6 +7,10 @@
  */
 
 import { getEvents } from '@/lib/odds/fetcher';
+import { getDb } from '@/lib/db/client';
+import { tips as tipsTable, events as eventsTable } from '@/lib/db/schema';
+import { eq, desc, gt } from 'drizzle-orm';
+import { AFFILIATE_URLS } from '@/lib/odds/mock-data';
 import { MOCK_TIPS } from './mock-data';
 import type { Tip, ConfidenceBand } from './mock-data';
 
@@ -38,9 +42,69 @@ function confidenceBand(prob: number): ConfidenceBand {
   return 'low';
 }
 
+async function getTipsFromDB(): Promise<Tip[] | null> {
+  try {
+    if (!process.env.DATABASE_URL) return null;
+    const db = getDb();
+    const now = new Date();
+    const rows = await db
+      .select({
+        id:             tipsTable.id,
+        eventId:        tipsTable.eventId,
+        market:         tipsTable.market,
+        selection:      tipsTable.selection,
+        book:           tipsTable.book,
+        odd:            tipsTable.odd,
+        probability:    tipsTable.probability,
+        ev:             tipsTable.ev,
+        confidenceBand: tipsTable.confidenceBand,
+        expiresAt:      tipsTable.expiresAt,
+        sport:          eventsTable.sport,
+        league:         eventsTable.league,
+        home:           eventsTable.home,
+        away:           eventsTable.away,
+      })
+      .from(tipsTable)
+      .innerJoin(eventsTable, eq(tipsTable.eventId, eventsTable.id))
+      .where(gt(tipsTable.expiresAt, now))
+      .orderBy(desc(tipsTable.ev))
+      .limit(60);
+
+    if (rows.length === 0) return null;
+
+    const SPORT_ICONS_MAP: Record<string, string> = {
+      Futebol: '⚽', Basquete: '🏀', Tênis: '🎾', MMA: '🥊', Vôlei: '🏐', Rugby: '🏉',
+    };
+
+    return rows.map(r => ({
+      id:             r.id,
+      eventId:        r.eventId,
+      sport:          r.sport.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''),
+      league:         r.league,
+      matchLabel:     `${SPORT_ICONS_MAP[r.sport] ?? ''} ${r.home} × ${r.away}`,
+      market:         r.market,
+      selection:      r.selection,
+      book:           r.book,
+      odd:            r.odd,
+      probability:    r.probability,
+      ev:             r.ev,
+      evBand:         r.ev >= 0.10 ? 'high' : r.ev >= 0.05 ? 'highlight' : 'value',
+      confidence:     Math.round(Math.min(r.probability * 100, 99)),
+      confidenceBand: r.confidenceBand as ConfidenceBand,
+      expiresAt:      r.expiresAt.toISOString(),
+      affiliateUrl:   AFFILIATE_URLS[r.book] ?? '',
+    }));
+  } catch {
+    return null;
+  }
+}
+
 export async function getTips(): Promise<Tip[]> {
-  // Without any API key, return mock tips
-  if (!process.env.ODDS_API_KEY && !process.env.ODDSPAPI_KEY) return MOCK_TIPS;
+  // Sem chave de API → tenta DB, depois mock
+  if (!process.env.ODDS_API_KEY && !process.env.ODDSPAPI_KEY) {
+    const dbTips = await getTipsFromDB();
+    return dbTips ?? MOCK_TIPS;
+  }
 
   const events = await getEvents();
 
