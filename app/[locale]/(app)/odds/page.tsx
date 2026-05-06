@@ -23,8 +23,44 @@ const SPORT_LABELS: Record<string, string> = {
   mma:        'MMA',
 };
 
+const MARKET_SECTIONS = [
+  {
+    label: 'Resultado',
+    items: [
+      { name: 'Resultado Final (1X2)', key: 'match_winner',  count: 6 },
+      { name: 'Dupla Chance',          key: 'double_chance', count: 6 },
+      { name: 'Empate Anulado',        key: 'draw_no_bet',   count: 4 },
+    ],
+  },
+  {
+    label: 'Gols',
+    items: [
+      { name: 'Total de Gols',     key: 'total_goals',      count: 6 },
+      { name: 'Ambas Marcam',      key: 'btts',             count: 6 },
+      { name: 'Gols no 1° tempo',  key: 'first_half_goals', count: 5 },
+      { name: 'Placar exato',      key: 'correct_score',    count: 3 },
+    ],
+  },
+  {
+    label: 'Jogador',
+    items: [
+      { name: 'Artilheiro da partida', key: 'top_scorer',       count: 6 },
+      { name: 'Chutes no alvo',        key: 'shots_on_target',  count: 4 },
+      { name: 'Cartões',               key: 'cards',            count: 5 },
+    ],
+  },
+  {
+    label: 'Especiais',
+    items: [
+      { name: 'Escanteios',         key: 'corners',            count: 5 },
+      { name: 'Handicap Asiático',  key: 'asian_handicap',     count: 6 },
+      { name: 'Handicap Europeu',   key: 'european_handicap',  count: 4 },
+    ],
+  },
+];
+
 interface Props {
-  searchParams: Promise<{ sport?: string; filter?: string; league?: string }>;
+  searchParams: Promise<{ sport?: string; filter?: string; league?: string; market?: string }>;
 }
 
 export default async function OddsPage({ searchParams }: Props) {
@@ -33,6 +69,7 @@ export default async function OddsPage({ searchParams }: Props) {
   const sport   = sp.sport  ?? 'all';
   const filter  = sp.filter ?? '';
   const league  = sp.league ?? 'all';
+  const market  = sp.market ?? 'match_winner';
 
   const allEvents = await getEvents();
 
@@ -73,14 +110,16 @@ export default async function OddsPage({ searchParams }: Props) {
   const evColor = (ev: number) =>
     ev >= 0.10 ? 'var(--lime)' : ev >= 0.05 ? 'var(--green)' : ev > 0 ? 'var(--amber)' : 'var(--muted)';
 
-  function buildOddsHref(patch: { sport?: string; filter?: string; league?: string }) {
+  function buildOddsHref(patch: { sport?: string; filter?: string; league?: string; market?: string }) {
     const p = new URLSearchParams();
-    const s = patch.sport  ?? sport;
-    const f = patch.filter ?? filter;
-    const l = patch.league ?? league;
-    if (s !== 'all') p.set('sport',  s);
-    if (f)           p.set('filter', f);
-    if (l !== 'all') p.set('league', l);
+    const s  = patch.sport  ?? sport;
+    const f  = patch.filter ?? filter;
+    const l  = patch.league ?? league;
+    const m  = patch.market ?? market;
+    if (s !== 'all')           p.set('sport',  s);
+    if (f)                     p.set('filter', f);
+    if (l !== 'all')           p.set('league', l);
+    if (m !== 'match_winner')  p.set('market', m);
     const q = p.toString();
     return `/${locale}/odds${q ? `?${q}` : ''}`;
   }
@@ -95,6 +134,10 @@ export default async function OddsPage({ searchParams }: Props) {
 
   function leagueHref(newLeague: string) {
     return buildOddsHref({ league: newLeague });
+  }
+
+  function marketHref(newMarket: string) {
+    return buildOddsHref({ market: newMarket });
   }
 
   function EventSection({ list, title, live }: { list: typeof events; title: string; live?: boolean }) {
@@ -237,110 +280,141 @@ export default async function OddsPage({ searchParams }: Props) {
         ))}
       </div>
 
-      {/* Filters */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* Linha 1: esporte + status */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Link href={tabHref('all')} className={`f-tab${sport === 'all' ? ' on' : ''}`}>Todos</Link>
-          {(['football', 'basketball', 'tennis', 'mma'] as Sport[]).map(s => (
-            <Link key={s} href={tabHref(s)} className={`f-tab${sport === s ? ' on' : ''}`}>
-              {SPORT_ICONS[s]} {SPORT_LABELS[s]}
-            </Link>
-          ))}
-          <span className="f-sep" />
-          <Link href={filterHref('live')} className={`f-tab${filter === 'live' ? ' on' : ''}`}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
-            Ao vivo
-          </Link>
-          <Link href={filterHref('scheduled')} className={`f-tab${filter === 'scheduled' ? ' on' : ''}`}>Agendados</Link>
-          <Link href={filterHref('ev')} className={`f-tab ev-tab${filter === 'ev' ? ' on' : ''}`}>EV+</Link>
-        </div>
+      {/* ── HORIZONTAL LAYOUT: markets panel + content ── */}
+      <div className="odds-layout">
 
-        {/* Linha 2: campeonato/liga */}
-        {leagues.length > 2 && (
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
-            {leagues.map(lg => (
-              <Link key={lg} href={leagueHref(lg)}
-                style={{
-                  fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
-                  background: league === lg ? 'var(--lime)' : 'var(--s2)',
-                  border: `1px solid ${league === lg ? 'var(--lime)' : 'var(--border)'}`,
-                  color: league === lg ? '#000' : 'var(--muted)',
-                  textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
-                  transition: 'all .15s',
-                }}>
-                {lg === 'all' ? 'Todos campeonatos' : lg}
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+        {/* ── MARKETS PANEL (left sidebar) ── */}
+        <div className="markets-panel">
+          <div className="markets-panel-header">Mercados</div>
 
-      {/* Main content */}
-      <div className="page-grid" style={{ '--pg-cols': '1fr 252px', gap: 14 } as React.CSSProperties}>
-        <div>
-          {events.length === 0 ? (
-            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-              Nenhum evento encontrado para este filtro.
-            </div>
-          ) : (
-            <>
-              {liveEvents.length > 0 && <EventSection list={liveEvents} title="Ao Vivo" live />}
-              {scheduled.length > 0  && <EventSection list={scheduled}  title="Próximos" />}
-            </>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="page-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div className="card-head">
-              <div className="card-title">Melhores EV</div>
-              <span className="ev-badge lime">{topEV.length}</span>
-            </div>
-            {topEV.length === 0 ? (
-              <div style={{ padding: '16px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>Nenhum EV+ agora</div>
-            ) : topEV.map(({ event, ev }, i) => (
-              <Link key={event.id} href={`/${locale}/odds/${event.id}`} style={{ textDecoration: 'none' }}>
-                <div className="tip-row" style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 14px',
-                  borderBottom: i < topEV.length - 1 ? '1px solid var(--border)' : 'none',
-                }}>
-                  <span style={{ fontSize: 14 }}>{SPORT_ICONS[event.sport]}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {event.home} × {event.away}
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--muted)' }}>{event.league}</div>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: evColor(ev), fontFamily: 'var(--font-cond)' }}>
-                    +{(ev * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          <div className="card" style={{ padding: '14px 16px' }}>
-            <div className="card-title" style={{ marginBottom: 10 }}>Como ler as odds</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { label: 'H · D · A', desc: 'Casa · Empate · Fora — melhor odd disponível' },
-                { label: 'EV+',       desc: 'Expected Value positivo — a odd supera a prob. real estimada' },
-                { label: 'Lime',      desc: 'Linha destacada = melhor oportunidade' },
-              ].map(item => (
-                <div key={item.label} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--lime)', fontFamily: 'var(--font-cond)', letterSpacing: '0.04em', flexShrink: 0, marginTop: 1 }}>
-                    {item.label}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'var(--text)', opacity: 0.7, lineHeight: 1.5 }}>{item.desc}</span>
-                </div>
+          {MARKET_SECTIONS.map(section => (
+            <div key={section.label} className="mp-section">
+              <div className="mp-sec-label">{section.label}</div>
+              {section.items.map(item => (
+                <Link
+                  key={item.key}
+                  href={marketHref(item.key)}
+                  className={`market-item${market === item.key ? ' on' : ''}`}
+                >
+                  <span className="mi-name">{item.name}</span>
+                  <span className="mi-count">{item.count}</span>
+                </Link>
               ))}
             </div>
-          </div>
+          ))}
         </div>
-      </div>
+
+        {/* ── RIGHT CONTENT: filters + events grid ── */}
+        <div className="odds-content">
+
+          {/* Filters */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Row 1: sport + status */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Link href={tabHref('all')} className={`f-tab${sport === 'all' ? ' on' : ''}`}>Todos</Link>
+              {(['football', 'basketball', 'tennis', 'mma'] as Sport[]).map(s => (
+                <Link key={s} href={tabHref(s)} className={`f-tab${sport === s ? ' on' : ''}`}>
+                  {SPORT_ICONS[s]} {SPORT_LABELS[s]}
+                </Link>
+              ))}
+              <span className="f-sep" />
+              <Link href={filterHref('live')} className={`f-tab${filter === 'live' ? ' on' : ''}`}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
+                Ao vivo
+              </Link>
+              <Link href={filterHref('scheduled')} className={`f-tab${filter === 'scheduled' ? ' on' : ''}`}>Agendados</Link>
+              <Link href={filterHref('ev')} className={`f-tab ev-tab${filter === 'ev' ? ' on' : ''}`}>EV+</Link>
+            </div>
+
+            {/* Row 2: league */}
+            {leagues.length > 2 && (
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
+                {leagues.map(lg => (
+                  <Link key={lg} href={leagueHref(lg)}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
+                      background: league === lg ? 'var(--lime)' : 'var(--s2)',
+                      border: `1px solid ${league === lg ? 'var(--lime)' : 'var(--border)'}`,
+                      color: league === lg ? '#000' : 'var(--muted)',
+                      textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+                      transition: 'all .15s',
+                    }}>
+                    {lg === 'all' ? 'Todos campeonatos' : lg}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Main content grid: events + right sidebar */}
+          <div className="page-grid" style={{ '--pg-cols': '1fr 252px', gap: 14 } as React.CSSProperties}>
+            <div>
+              {events.length === 0 ? (
+                <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  Nenhum evento encontrado para este filtro.
+                </div>
+              ) : (
+                <>
+                  {liveEvents.length > 0 && <EventSection list={liveEvents} title="Ao Vivo" live />}
+                  {scheduled.length > 0  && <EventSection list={scheduled}  title="Próximos" />}
+                </>
+              )}
+            </div>
+
+            {/* Right sidebar */}
+            <div className="page-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="card" style={{ overflow: 'hidden' }}>
+                <div className="card-head">
+                  <div className="card-title">Melhores EV</div>
+                  <span className="ev-badge lime">{topEV.length}</span>
+                </div>
+                {topEV.length === 0 ? (
+                  <div style={{ padding: '16px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>Nenhum EV+ agora</div>
+                ) : topEV.map(({ event, ev }, i) => (
+                  <Link key={event.id} href={`/${locale}/odds/${event.id}`} style={{ textDecoration: 'none' }}>
+                    <div className="tip-row" style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '9px 14px',
+                      borderBottom: i < topEV.length - 1 ? '1px solid var(--border)' : 'none',
+                    }}>
+                      <span style={{ fontSize: 14 }}>{SPORT_ICONS[event.sport]}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {event.home} × {event.away}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--muted)' }}>{event.league}</div>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: evColor(ev), fontFamily: 'var(--font-cond)' }}>
+                        +{(ev * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              <div className="card" style={{ padding: '14px 16px' }}>
+                <div className="card-title" style={{ marginBottom: 10 }}>Como ler as odds</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { label: 'H · D · A', desc: 'Casa · Empate · Fora — melhor odd disponível' },
+                    { label: 'EV+',       desc: 'Expected Value positivo — a odd supera a prob. real estimada' },
+                    { label: 'Lime',      desc: 'Linha destacada = melhor oportunidade' },
+                  ].map(item => (
+                    <div key={item.label} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--lime)', fontFamily: 'var(--font-cond)', letterSpacing: '0.04em', flexShrink: 0, marginTop: 1 }}>
+                        {item.label}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text)', opacity: 0.7, lineHeight: 1.5 }}>{item.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>{/* end odds-content */}
+      </div>{/* end odds-layout */}
+
     </div>
   );
 }

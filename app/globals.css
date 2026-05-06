@@ -2632,13 +2632,27 @@ aside {
 }
 
 .hero-v2-inner {
-  max-width: 960px;
+  max-width: 1280px;
   width: 100%;
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 60px;
+  align-items: center;
+}
+
+.hero-v2-left {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.hero-v2-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeUp 0.7s 0.3s ease both;
 }
 
 .hero-v2-badge {
@@ -2762,7 +2776,7 @@ aside {
   align-items: center;
   gap: 12px;
   animation: fadeUp 0.6s 0.25s ease both;
-  margin-bottom: 64px;
+  margin-bottom: 0;
 }
 
 .hero-v2-avatars {
@@ -3527,11 +3541,390 @@ aside {
 }
 
 /* ============================================================
+   EV DETECTOR CARDS (hero right column — dark theme)
+   ============================================================ */
+
+/* big EV detector card */
+.det-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 24px 60px -28px rgba(0,0,0,0.6), 0 6px 18px -10px rgba(0,0,0,0.3);
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+.det-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--lime), transparent);
+}
+.det-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.det-head .scan {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--lime);
+}
+.det-head .scd {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--lime);
+  animation: pulse 1s infinite;
+  flex-shrink: 0;
+}
+.det-match {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.det-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.det-team.r {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.det-tlogo {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.det-tn {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--text);
+}
+.det-trec {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.det-vs {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dim);
+  letter-spacing: .1em;
+}
+.det-prob {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+}
+.det-prob .ph {
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+.det-prob .pv {
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.det-prob .pv.win {
+  color: var(--lime);
+}
+.det-ev-box {
+  position: relative;
+  background: linear-gradient(135deg, rgba(204,255,0,0.12) 0%, rgba(204,255,0,0.03) 100%);
+  border: 1px solid rgba(204,255,0,0.35);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+}
+.det-ev-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(45deg, transparent 0px, transparent 8px, rgba(204,255,0,0.04) 8px, rgba(204,255,0,0.04) 9px);
+  pointer-events: none;
+}
+.det-ev-l { position: relative; z-index: 1; }
+.det-ev-tip {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+}
+.det-ev-pick {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .01em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.det-ev-pick .ev-muted {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+.det-ev-r { position: relative; z-index: 1; text-align: right; }
+.det-ev-num {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--lime);
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+.det-ev-num sup {
+  font-size: .5em;
+  vertical-align: super;
+}
+.det-ev-lab {
+  font-size: 9px;
+  color: var(--lime);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+}
+
+/* Odds movement card */
+.mov-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 16px 40px -22px rgba(0,0,0,0.5);
+  animation: fadeUp 0.6s 0.45s ease both;
+}
+.mov-l {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mov-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: rgba(255,184,0,0.12);
+  border: 1px solid rgba(255,184,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--amber);
+}
+.mov-tag {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 3px;
+}
+.mov-text {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+.mov-text b {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+}
+.mov-r {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Sparkline / hit rate card */
+.spark-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 16px 40px -22px rgba(0,0,0,0.5);
+  animation: fadeUp 0.6s 0.6s ease both;
+}
+.spark-l { flex: 1; min-width: 0; }
+.spark-tag {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 3px;
+}
+.spark-v {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+.spark-v b { color: var(--green); }
+.spark-v .spark-muted {
+  color: var(--muted);
+  font-size: .7em;
+  font-weight: 400;
+}
+.spark-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.spark-svg { flex-shrink: 0; opacity: .9; }
+
+/* ============================================================
+   MARKETS PANEL (odds page left sidebar)
+   ============================================================ */
+
+.odds-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.markets-panel {
+  width: 226px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 80px);
+  padding-bottom: 24px;
+}
+.markets-panel::-webkit-scrollbar { display: none; }
+
+.markets-panel-header {
+  padding: 12px 14px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+}
+
+.mp-section {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+
+.mp-sec-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 14px 4px;
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+}
+
+.market-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background .12s;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.market-item:hover {
+  background: var(--s2);
+  color: var(--text);
+}
+.market-item.on {
+  background: var(--s2);
+  color: var(--text);
+}
+.mi-name { flex: 1; }
+.mi-count {
+  font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dim);
+}
+.market-item.on .mi-name { color: var(--text); }
+.market-item.on .mi-count { color: var(--lime); }
+
+.odds-content {
+  flex: 1;
+  min-width: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ============================================================
    MOBILE — new sections
    ============================================================ */
 @media (max-width: 768px) {
   /* Hero V2 */
   .hero-v2 { padding: 80px 16px 0; }
+  .hero-v2-inner { grid-template-columns: 1fr; gap: 32px; }
+  .hero-v2-left { align-items: center; text-align: center; }
+  .hero-v2-right { display: none; }
   .hero-v2-h1 { font-size: 48px; }
   .hero-v2-sub { font-size: 15px; }
   .hero-v2-form { max-width: 100%; }
