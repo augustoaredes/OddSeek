@@ -1,12 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import {
-  loadInitialBankroll, saveInitialBankroll,
-  loadRiskProfile, saveRiskProfile,
-} from '@/lib/banca/store';
+import { useSession, signOut } from 'next-auth/react';
 import type { RiskProfile } from '@/lib/banca/store';
 
 const RISK_PROFILES = [
@@ -16,43 +13,93 @@ const RISK_PROFILES = [
 ];
 
 export default function ConfiguracoesPage() {
-  const locale = useLocale();
+  const locale     = useLocale();
+  const { data: session } = useSession();
+  const isAuth     = Boolean(session?.user?.id);
 
+  // Account
+  const [name,   setName]   = useState('');
+  const [handle, setHandle] = useState('');
+  const [email,  setEmail]  = useState('');
+  const [editName,   setEditName]   = useState(false);
+  const [editHandle, setEditHandle] = useState(false);
+  const [accountMsg, setAccountMsg] = useState('');
+
+  // Banca
   const [bankrollInput, setBankrollInput] = useState('2000');
   const [riskProfile,   setRiskProfile]   = useState<RiskProfile>('moderado');
-  const [savedBankroll, setSavedBankroll] = useState<number | null>(null);
-  const [bankrollDirty, setBankrollDirty] = useState(false);
+  const [bancaMsg,      setBancaMsg]      = useState('');
+
+  // Danger zone
+  const [deleteConfirm,  setDeleteConfirm]  = useState(false);
+  const [deletePending, startDeleteTransition] = useTransition();
+
+  // Notifications (UI only for now)
   const [notifications, setNotifications] = useState({
     bancaAlerts: true,
     newTips:     true,
     favoriteOdds: false,
     newsletter:  false,
   });
-  const [publicProfile, setPublicProfile] = useState(true);
-  const [saved, setSaved] = useState(false);
 
+  // Load user data
   useEffect(() => {
-    const num     = loadInitialBankroll();
-    const profile = loadRiskProfile();
-    setSavedBankroll(num);
-    setBankrollInput(num.toFixed(2).replace('.', ','));
-    setRiskProfile(profile);
-  }, []);
+    if (!isAuth) return;
+    Promise.all([
+      fetch('/api/account').then(r => r.json()),
+      fetch('/api/banca/bankroll').then(r => r.json()),
+    ]).then(([acc, banca]) => {
+      setName(acc.name ?? '');
+      setHandle(acc.handle ?? '');
+      setEmail(acc.email ?? '');
+      const amt = banca.initialAmount ?? banca.currentAmount ?? 2000;
+      setBankrollInput(String(Math.round(amt)));
+      setRiskProfile((banca.riskProfile as RiskProfile) ?? 'moderado');
+    }).catch(() => {});
+  }, [isAuth]);
 
-  function handleBankrollChange(val: string) {
-    setBankrollInput(val.replace(/[^0-9,\.]/g, ''));
-    setBankrollDirty(true);
+  async function saveAccount(field: 'name' | 'handle') {
+    const body = field === 'name' ? { name } : { handle };
+    const res = await fetch('/api/account', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      setAccountMsg('Salvo!');
+      if (field === 'name')   setEditName(false);
+      if (field === 'handle') setEditHandle(false);
+      setTimeout(() => setAccountMsg(''), 2000);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setAccountMsg(err?.error ?? 'Erro ao salvar');
+      setTimeout(() => setAccountMsg(''), 3000);
+    }
   }
 
-  function saveBancaSettings() {
+  async function saveBanca() {
     const num = parseFloat(bankrollInput.replace(',', '.'));
-    if (isNaN(num) || num <= 0) return;
-    saveInitialBankroll(num);
-    saveRiskProfile(riskProfile);
-    setSavedBankroll(num);
-    setBankrollDirty(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    if (isNaN(num) || num < 10) { setBancaMsg('Valor mínimo R$10'); return; }
+    const res = await fetch('/api/banca/bankroll', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initialAmount: num, riskProfile }),
+    });
+    if (res.ok) {
+      setBancaMsg('Salvo!');
+      setTimeout(() => setBancaMsg(''), 2000);
+    } else {
+      setBancaMsg('Erro ao salvar');
+      setTimeout(() => setBancaMsg(''), 3000);
+    }
+  }
+
+  function handleDeleteAccount() {
+    if (!deleteConfirm) { setDeleteConfirm(true); return; }
+    startDeleteTransition(async () => {
+      await fetch('/api/account', { method: 'DELETE' });
+      await signOut({ callbackUrl: `/${locale}` });
+    });
   }
 
   function toggleNotif(key: keyof typeof notifications) {
@@ -78,12 +125,6 @@ export default function ConfiguracoesPage() {
     </div>
   );
 
-  const row = (children: React.ReactNode, last?: boolean) => (
-    <div style={{ padding: '14px 20px', borderBottom: last ? 'none' : '1px solid var(--border)' }}>
-      {children}
-    </div>
-  );
-
   const toggle = (on: boolean, onToggle: () => void) => (
     <button
       type="button"
@@ -95,32 +136,78 @@ export default function ConfiguracoesPage() {
     </button>
   );
 
+  const inputStyle: React.CSSProperties = {
+    flex: 1, background: 'var(--s2)', border: '1px solid var(--lime)', borderRadius: 8,
+    padding: '8px 12px', fontSize: 13, fontWeight: 600, color: 'var(--text)',
+    outline: 'none', minWidth: 0,
+  };
+
   return (
     <div className="page-padded" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'var(--font-cond)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em', textTransform: 'uppercase', color: 'var(--text)', margin: 0 }}>
           Configurações
         </h1>
+        {accountMsg && (
+          <div style={{ marginTop: 8, fontSize: 12, color: accountMsg === 'Salvo!' ? 'var(--green)' : 'var(--red)' }}>
+            {accountMsg}
+          </div>
+        )}
       </div>
 
       {/* ── Conta ── */}
       <section style={{ marginBottom: 20 }}>
         {sectionLabel('Conta')}
         {card(<>
-          {[
-            { label: 'Nome',   value: 'Demo User',        action: 'Editar' },
-            { label: 'E-mail', value: 'demo@oddseek.app', action: 'Alterar' },
-            { label: 'Senha',  value: '••••••••',          action: 'Alterar' },
-            { label: 'Handle', value: '@demo',             action: 'Editar' },
-          ].map((r, i, arr) => (
-            <div key={r.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.04em' }}>{r.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginTop: 2 }}>{r.value}</div>
-              </div>
-              <button type="button" style={{ fontSize: 11, fontWeight: 700, color: 'var(--lime)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>{r.action}</button>
+          {/* Nome */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border)', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.04em', marginBottom: 4 }}>Nome</div>
+              {editName ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
+                  <button type="button" onClick={() => saveAccount('name')} style={{ fontSize: 11, fontWeight: 700, color: '#000', background: 'var(--lime)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Salvar</button>
+                  <button type="button" onClick={() => setEditName(false)} style={{ fontSize: 11, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{name || '—'}</div>
+              )}
             </div>
-          ))}
+            {!editName && (
+              <button type="button" onClick={() => setEditName(true)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--lime)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', flexShrink: 0 }}>Editar</button>
+            )}
+          </div>
+
+          {/* Handle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border)', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.04em', marginBottom: 4 }}>Handle</div>
+              {editHandle ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, color: 'var(--muted)' }}>@</span>
+                    <input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} style={{ ...inputStyle, flex: 1 }} />
+                  </div>
+                  <button type="button" onClick={() => saveAccount('handle')} style={{ fontSize: 11, fontWeight: 700, color: '#000', background: 'var(--lime)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Salvar</button>
+                  <button type="button" onClick={() => setEditHandle(false)} style={{ fontSize: 11, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{handle ? `@${handle}` : '—'}</div>
+              )}
+            </div>
+            {!editHandle && (
+              <button type="button" onClick={() => setEditHandle(true)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--lime)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', flexShrink: 0 }}>Editar</button>
+            )}
+          </div>
+
+          {/* Email (read-only) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.04em' }}>E-mail</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginTop: 2 }}>{email || '—'}</div>
+            </div>
+            <span style={{ fontSize: 10, color: 'var(--muted)', padding: '3px 8px', borderRadius: 4, background: 'var(--s2)', border: '1px solid var(--border)' }}>Verificado</span>
+          </div>
         </>)}
       </section>
 
@@ -128,38 +215,25 @@ export default function ConfiguracoesPage() {
       <section style={{ marginBottom: 20 }}>
         {sectionLabel('Banca')}
         {card(<>
-          {/* Banca Inicial */}
-          {row(<>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Banca Inicial (R$)</div>
-                <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>Referência para cálculo de ROI e Kelly</div>
-              </div>
-              {savedBankroll !== null && !bankrollDirty && (
-                <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 700, flexShrink: 0 }}>
-                  Salvo ✓
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>Banca Inicial (R$)</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>R$</span>
               <input
                 type="text"
                 inputMode="decimal"
                 value={bankrollInput}
-                onChange={e => handleBankrollChange(e.target.value)}
+                onChange={e => setBankrollInput(e.target.value.replace(/[^0-9,\.]/g, ''))}
                 style={{
                   flex: 1, background: 'var(--s2)', border: '1px solid var(--border)', borderRadius: 8,
                   padding: '10px 12px', fontSize: 15, fontWeight: 700, color: 'var(--text)',
                   fontFamily: 'var(--font-cond)', outline: 'none', minWidth: 0,
                 }}
-                placeholder="2000,00"
               />
             </div>
-          </>)}
+          </div>
 
-          {/* Perfil de risco */}
-          {row(<>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>Perfil de Risco</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {RISK_PROFILES.map(p => (
@@ -176,28 +250,32 @@ export default function ConfiguracoesPage() {
                   }}
                 >
                   <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-cond)', textTransform: 'uppercase' }}>{p.label}</div>
-                  <div style={{ fontSize: 10, marginTop: 3, color: riskProfile === p.key ? 'var(--lime)' : 'var(--dim)' }}>cap {p.cap}</div>
+                  <div style={{ fontSize: 10, marginTop: 3 }}>cap {p.cap}</div>
                 </button>
               ))}
             </div>
             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
               {RISK_PROFILES.find(p => p.key === riskProfile)?.desc}
             </div>
-          </>)}
+          </div>
 
-          {/* Save button */}
-          <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
               type="button"
-              onClick={saveBancaSettings}
+              onClick={saveBanca}
               style={{
                 padding: '10px 24px', borderRadius: 8, background: 'var(--lime)', color: '#000',
                 fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-cond)', textTransform: 'uppercase',
-                border: 'none', cursor: 'pointer', letterSpacing: '0.04em', transition: 'opacity 0.15s',
+                border: 'none', cursor: 'pointer', letterSpacing: '0.04em',
               }}
             >
-              {saved ? 'Salvo ✓' : 'Salvar configurações de banca'}
+              Salvar banca
             </button>
+            {bancaMsg && (
+              <span style={{ fontSize: 12, color: bancaMsg === 'Salvo!' ? 'var(--green)' : 'var(--red)' }}>
+                {bancaMsg}
+              </span>
+            )}
           </div>
         </>)}
       </section>
@@ -215,7 +293,7 @@ export default function ConfiguracoesPage() {
         </>)}
       </section>
 
-      {/* ── Privacidade / LGPD ── */}
+      {/* ── Privacidade ── */}
       <section style={{ marginBottom: 20 }}>
         {sectionLabel('Privacidade')}
         {card(<>
@@ -226,12 +304,11 @@ export default function ConfiguracoesPage() {
             </div>
             <button type="button" style={{ fontSize: 11, fontWeight: 700, color: 'var(--lime)', background: 'none', border: 'none', cursor: 'pointer' }}>Solicitar</button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Perfil público</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Visível no ranking e comunidade</div>
-            </div>
-            {toggle(publicProfile, () => setPublicProfile(v => !v))}
+          <div style={{ padding: '14px 20px' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>Mais sobre privacidade</div>
+            <Link href={`/${locale}/privacidade`} style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none' }}>
+              Ler política de privacidade →
+            </Link>
           </div>
         </>)}
       </section>
@@ -243,20 +320,41 @@ export default function ConfiguracoesPage() {
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Excluir conta</div>
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0, lineHeight: 1.6 }}>
-              Seus dados pessoais serão anonimizados. O histórico de apostas é mantido de forma anônima para preservar integridade contábil (obrigação legal). Esta ação é irreversível.
+              Seus dados pessoais serão anonimizados. O histórico de apostas é mantido de forma anônima para preservar integridade contábil. Esta ação é irreversível.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {deleteConfirm ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--red)', margin: 0, fontWeight: 700 }}>
+                Tem certeza? Esta ação não pode ser desfeita.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deletePending}
+                  style={{ padding: '9px 20px', borderRadius: 8, background: 'var(--red)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: deletePending ? 0.7 : 1 }}
+                >
+                  {deletePending ? 'Excluindo...' : 'Confirmar exclusão'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(false)}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--s2)', border: '1px solid var(--border)', color: 'var(--muted)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
             <button
               type="button"
+              onClick={handleDeleteAccount}
               style={{ padding: '9px 20px', borderRadius: 8, background: 'oklch(50% 0.2 25 / 0.2)', border: '1px solid oklch(50% 0.2 25 / 0.5)', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
             >
               Excluir minha conta
             </button>
-            <Link href={`/${locale}/privacidade`} style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none' }}>
-              Ler política de privacidade →
-            </Link>
-          </div>
+          )}
         </div>
       </section>
     </div>

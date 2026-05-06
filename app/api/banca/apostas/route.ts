@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db/client';
 import { bets, bankrolls } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
+import { apiRatelimit, checkRateLimit } from '@/lib/ratelimit';
 
 const createBetSchema = z.object({
   sport:      z.string().min(1),
@@ -56,6 +57,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const rl = await checkRateLimit(apiRatelimit, session.user.id);
+  if (!rl.success) return Response.json({ error: 'Too many requests' }, { status: 429 });
 
   const body = await req.json();
   const parsed = createBetSchema.safeParse(body);

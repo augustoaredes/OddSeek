@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { getDb } from '@/lib/db/client';
 import { bankrolls } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { apiRatelimit, checkRateLimit } from '@/lib/ratelimit';
 
 export async function GET() {
   const session = await auth();
@@ -31,6 +32,9 @@ export async function GET() {
 export async function PATCH(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const rl = await checkRateLimit(apiRatelimit, session.user.id);
+  if (!rl.success) return Response.json({ error: 'Too many requests' }, { status: 429 });
 
   const body = await req.json() as { initialAmount?: number; riskProfile?: string };
   const db = getDb();
