@@ -19,6 +19,7 @@ class AnimationController {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private stars: Star[] = [];
+  public fillColor: string;
 
   // public readonly so Star can access them
   public readonly cameraZ = -400;
@@ -36,10 +37,12 @@ class AnimationController {
     ctx: CanvasRenderingContext2D,
     _dpr: number,
     size: number,
+    fillColor: string,
   ) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.size = size;
+    this.fillColor = fillColor;
     this.timeline = gsap.timeline({ repeat: -1 });
     this.createStarsSeeded();
     this.setupTimeline();
@@ -155,7 +158,7 @@ class AnimationController {
     ctx.rotate(-Math.PI * this.ease(t2, 2.7));
     this.drawTrail(t1);
 
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = this.fillColor;
     for (const star of this.stars) {
       star.render(t1, this);
     }
@@ -167,7 +170,7 @@ class AnimationController {
     for (let i = 0; i < this.trailLength; i++) {
       const f = this.map(i, 0, this.trailLength, 1.1, 0.1);
       const sw = (1.3 * (1 - t1) + 3.0 * Math.sin(Math.PI * t1)) * f;
-      this.ctx.fillStyle = 'white';
+      this.ctx.fillStyle = this.fillColor;
       this.ctx.lineWidth = sw;
       const pathTime = t1 - 0.00015 * i;
       const pos = this.spiralPath(pathTime);
@@ -264,11 +267,38 @@ class Star {
   }
 }
 
+function getThemeColor(): string {
+  if (typeof document === 'undefined') return 'white';
+  const theme = document.documentElement.dataset.theme ?? 'dark';
+  return theme === 'light' ? 'rgba(80,140,20,0.75)' : 'white';
+}
+
 export function SpiralAnimation() {
   const wrapRef  = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef   = useRef<AnimationController | null>(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
+  const [fillColor, setFillColor] = useState<string>('white');
+
+  // Lê tema inicial e observa mudanças
+  useEffect(() => {
+    setFillColor(getThemeColor());
+    const observer = new MutationObserver(() => {
+      setFillColor(getThemeColor());
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  // Atualiza a cor no controller sem recriar a animação
+  useEffect(() => {
+    if (animRef.current) {
+      animRef.current.fillColor = fillColor;
+    }
+  }, [fillColor]);
 
   // Mede o container real (não window) para o canvas nunca ser maior que o hero
   useEffect(() => {
@@ -298,12 +328,13 @@ export function SpiralAnimation() {
     ctx.scale(dpr, dpr);
 
     animRef.current?.destroy();
-    animRef.current = new AnimationController(canvas, ctx, dpr, size);
+    animRef.current = new AnimationController(canvas, ctx, dpr, size, fillColor);
 
     return () => {
       animRef.current?.destroy();
       animRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dims]);
 
   return (

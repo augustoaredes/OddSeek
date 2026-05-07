@@ -2,203 +2,54 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl';
-import { signOut } from 'next-auth/react';
+import { useLocale } from 'next-intl';
+import { useSession, signOut } from 'next-auth/react';
 import { OddSeekMark } from '@/components/brand/OddSeekMark';
 
-interface NavItem {
-  href: string;
-  label: string;
-  badge?: number | string;
-  badgeVariant?: 'lime' | 'amber';
-  icon: React.ReactNode;
-}
-
-function NavIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{children}</span>
-  );
-}
+const SPORTS = [
+  { key: 'football',   label: 'Futebol',   count: 1247, dot: true },
+  { key: 'basketball', label: 'Basquete',  count: 312  },
+  { key: 'tennis',     label: 'Tênis',     count: 198  },
+  { key: 'mma',        label: 'MMA',       count: 42   },
+  { key: 'esports',    label: 'E-Sports',  count: 86   },
+  { key: 'american_football', label: 'NFL', count: 28  },
+];
 
 export function AppSidebar() {
-  const t = useTranslations('sidebar');
-  const locale = useLocale();
+  const locale   = useLocale();
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  const name     = session?.user?.name ?? 'Demo User';
+  const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + '/');
   }
 
-  const mainItems: NavItem[] = [
-    {
-      href: `/${locale}/dashboard`,
-      label: t('dashboard'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <rect x="1.5" y="1.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-            <rect x="8" y="1.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-            <rect x="1.5" y="8" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-            <rect x="8" y="8" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/tips`,
-      label: t('tips'),
-      badge: 14,
-      badgeVariant: 'lime',
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="5" r="3" stroke="currentColor" strokeWidth="1.2"/>
-            <path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/odds`,
-      label: t('odds'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 7h8M5 4l-2 3 2 3M9 4l2 3-2 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/multiplas`,
-      label: t('parlays'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M2 11l3-4 2.5 2 3-5 2 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/arbitragem`,
-      label: t('arbitrage'),
-      badge: 'ARB',
-      badgeVariant: 'amber' as const,
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="3.5" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/>
-            <circle cx="10.5" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/>
-            <path d="M5.5 5.5L8.5 4M5.5 8.5L8.5 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-  ];
+  function sport(key: string) {
+    const sp = new URLSearchParams({ sport: key });
+    return `/${locale}/odds?${sp}`;
+  }
 
-  const bankrollItems: NavItem[] = [
-    {
-      href: `/${locale}/banca`,
-      label: t('bankroll'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <rect x="1.5" y="4" width="11" height="7.5" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-            <path d="M4 4V3a2 2 0 014 0v1" stroke="currentColor" strokeWidth="1.2"/>
-            <circle cx="7" cy="8" r="1" fill="currentColor"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/banca/apostas`,
-      label: t('bets'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M2 12.5h10M2 9.5h10M4 6.5h6M5 3.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/banca/insights`,
-      label: t('insights'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
-            <path d="M7 4v3l2 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-  ];
-
-  const communityItems: NavItem[] = [
-    {
-      href: `/${locale}/comunidade`,
-      label: t('community'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.2"/>
-            <circle cx="10" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.2"/>
-            <path d="M1 13c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-            <path d="M10 9.5c2 0 3.5 1.3 3.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/ranking`,
-      label: t('ranking'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <rect x="1" y="7" width="3" height="5.5" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
-            <rect x="5.5" y="4" width="3" height="8.5" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
-            <rect x="10" y="1.5" width="3" height="11" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      href: `/${locale}/configuracoes`,
-      label: t('settings'),
-      icon: (
-        <NavIcon>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/>
-            <path d="M7 1.5v1.5M7 11v1.5M1.5 7H3M11 7h1.5M3.4 3.4l1 1M9.6 9.6l1 1M3.4 10.6l1-1M9.6 4.4l1-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </NavIcon>
-      ),
-    },
-  ];
-
-  function renderItem(item: NavItem) {
-    const active = isActive(item.href);
+  const li = (href: string, label: string, badge?: string | number, badgeColor?: string, icon?: React.ReactNode) => {
+    const active = isActive(href);
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={`nav-item${active ? ' active' : ''}`}
-      >
-        {item.icon}
-        {item.label}
-        {item.badge !== undefined && (
-          <span className={`nav-badge${item.badgeVariant === 'amber' ? ' amber' : ''}`}>
-            {item.badge}
+      <Link key={href} href={href} className={`nav-item${active ? ' active' : ''}`}>
+        {icon ?? null}
+        {label}
+        {badge !== undefined && (
+          <span className="nav-badge" style={badgeColor ? { background: badgeColor + '22', color: badgeColor, border: `1px solid ${badgeColor}44` } : undefined}>
+            {badge}
           </span>
         )}
       </Link>
     );
-  }
+  };
 
   return (
     <aside>
+      {/* Logo */}
       <Link href={`/${locale}/dashboard`} className="sidebar-logo">
         <OddSeekMark size="md" />
         <span className="lw" style={{ fontSize: 17 }}>
@@ -207,68 +58,119 @@ export function AppSidebar() {
         </span>
       </Link>
 
-      <div className="nav-group">
-        <div className="nav-group-label">{t('main')}</div>
-        {mainItems.map(renderItem)}
-      </div>
+      <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 12px' }}>
 
-      <div className="nav-group">
-        <div className="nav-group-label">{t('sports')}</div>
-        {bankrollItems.map(renderItem)}
-      </div>
+        {/* PRINCIPAL */}
+        <div className="nav-group-label" style={{ marginTop: 8 }}>Principal</div>
 
-      <div className="nav-group">
-        <div className="nav-group-label">{t('account')}</div>
-        {communityItems.map(renderItem)}
-      </div>
+        {li(`/${locale}/dashboard`, 'Dashboard', undefined, undefined,
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="8" y="1.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="1.5" y="8" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="8" y="8" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg></NavIcon>
+        )}
+        {li(`/${locale}/odds`, 'Odds ao vivo', 'EV+', 'var(--lime)',
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M5 4l-2 3 2 3M9 4l2 3-2 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg></NavIcon>
+        )}
+        {li(`/${locale}/tips`, 'Palpites IA', 128, undefined,
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="3" stroke="currentColor" strokeWidth="1.2"/><path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg></NavIcon>
+        )}
+        {li(`/${locale}/multiplas`, 'Múltiplas', undefined, undefined,
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 11l3-4 2.5 2 3-5 2 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg></NavIcon>
+        )}
+        {li(`/${locale}/banca`, 'Banca & P&L', undefined, undefined,
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="4" width="11" height="7.5" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 4V3a2 2 0 014 0v1" stroke="currentColor" strokeWidth="1.2"/><circle cx="7" cy="8" r="1" fill="currentColor"/></svg></NavIcon>
+        )}
 
+        {/* ESPORTES */}
+        <div className="nav-group-label" style={{ marginTop: 16 }}>Esportes</div>
+        {SPORTS.map(s => {
+          const href = sport(s.key);
+          const active = pathname.includes(`sport=${s.key}`);
+          return (
+            <Link key={s.key} href={href} className={`nav-item${active ? ' active' : ''}`}>
+              {s.dot && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--lime)', flexShrink: 0 }} />
+              )}
+              {!s.dot && <span style={{ width: 6, flexShrink: 0 }} />}
+              {s.label}
+              <span style={{ marginLeft: 'auto', fontSize: 10, color: active ? 'var(--lime)' : 'var(--dim)', fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-cond)', fontWeight: 700 }}>
+                {s.count.toLocaleString('pt-BR')}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* CONTA */}
+        <div className="nav-group-label" style={{ marginTop: 16 }}>Conta</div>
+        {li(`/${locale}/comunidade`, 'Comunidade', undefined, undefined,
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="10" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.2"/><path d="M1 13c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M10 9.5c2 0 3.5 1.3 3.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg></NavIcon>
+        )}
+        {li(`/${locale}/ranking`, 'Histórico', undefined, undefined,
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="7" width="3" height="5.5" rx="0.5" stroke="currentColor" strokeWidth="1.2"/><rect x="5.5" y="4" width="3" height="8.5" rx="0.5" stroke="currentColor" strokeWidth="1.2"/><rect x="10" y="1.5" width="3" height="11" rx="0.5" stroke="currentColor" strokeWidth="1.2"/></svg></NavIcon>
+        )}
+        {li(`/${locale}/configuracoes`, 'Configurações', undefined, undefined,
+          <NavIcon><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M7 1.5v1.5M7 11v1.5M1.5 7H3M11 7h1.5M3.4 3.4l1 1M9.6 9.6l1 1M3.4 10.6l1-1M9.6 4.4l1-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg></NavIcon>
+        )}
+      </nav>
+
+      {/* Footer */}
       <div className="sidebar-footer">
-        <Link
-          href={`/${locale}`}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '7px 10px', borderRadius: 7, marginBottom: 4,
-            fontSize: 12, fontWeight: 600, color: 'var(--muted)',
-            textDecoration: 'none', transition: 'color 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
-        >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
-            <path d="M1.5 6.5L6.5 2l5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M3 5.5V11h2.5V8.5h2V11H10V5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Página Inicial
-        </Link>
 
-        <button
-          onClick={() => signOut({ callbackUrl: `/${locale}` })}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '7px 10px', borderRadius: 7, marginBottom: 8,
-            fontSize: 12, fontWeight: 600, color: 'var(--muted)',
-            background: 'none', border: 'none', cursor: 'pointer',
-            width: '100%', textAlign: 'left', transition: 'color 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--red)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
-        >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
-            <path d="M5 2H2a1 1 0 00-1 1v7a1 1 0 001 1h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-            <path d="M8.5 9l3-2.5L8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            <line x1="11" y1="6.5" x2="4.5" y2="6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-          Sair da conta
-        </button>
-
-        <div className="user-row">
-          <div className="avatar">U</div>
-          <div>
-            <div className="user-name">Demo User</div>
-            <div className="user-plan">{t('free_plan')}</div>
+        {/* Upgrade card */}
+        <div style={{
+          background: 'oklch(80% 0.3 115 / 0.08)',
+          border: '1px solid oklch(80% 0.3 115 / 0.2)',
+          borderRadius: 10, padding: '14px 14px 12px', marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--lime)', opacity: .7, marginBottom: 4 }}>
+            Plano Explorador
           </div>
+          <div style={{ fontFamily: 'var(--font-cond)', fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-.01em', color: 'var(--text)', lineHeight: 1.1, marginBottom: 8 }}>
+            Liberar EV+ Ilimitado
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5, margin: '0 0 10px' }}>
+            Upgrade para Pro e veja todos os palpites em tempo real.
+          </p>
+          <Link
+            href={`/${locale}/sobre`}
+            style={{
+              display: 'block', textAlign: 'center',
+              fontFamily: 'var(--font-cond)', fontWeight: 800, fontSize: 11,
+              letterSpacing: '.08em', textTransform: 'uppercase',
+              background: 'var(--lime)', color: '#000',
+              padding: '8px 0', borderRadius: 6, textDecoration: 'none',
+            }}
+          >
+            Ver Planos
+          </Link>
+        </div>
+
+        {/* User row */}
+        <div className="user-row">
+          <div className="avatar" style={{ background: 'oklch(75% 0.22 145)', color: '#000', fontWeight: 800 }}>
+            {initials}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+            <div className="user-plan">Plano Explorador</div>
+          </div>
+          <button
+            onClick={() => signOut({ callbackUrl: `/${locale}` })}
+            title="Sair"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--dim)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--red)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--dim)')}
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M5 2H2a1 1 0 00-1 1v7a1 1 0 001 1h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              <path d="M8.5 9l3-2.5L8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="11" y1="6.5" x2="4.5" y2="6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
       </div>
     </aside>
   );
+}
+
+function NavIcon({ children }: { children: React.ReactNode }) {
+  return <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{children}</span>;
 }

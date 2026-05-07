@@ -4231,9 +4231,6 @@ aside {
 /* ============================================================
    LIGHT THEME — adjustments for marketing sections
    ============================================================ */
-[data-theme="light"] .field-bg::before {
-  opacity: 0.3;
-}
 [data-theme="light"] .bc-card,
 [data-theme="light"] .float-card {
   box-shadow: 0 4px 24px rgba(0,0,0,0.08);

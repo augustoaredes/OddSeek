@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { ThemeToggle } from './ThemeToggle';
 
 // ── Search index ──────────────────────────────────────────────────────────────
@@ -61,9 +62,12 @@ function search(index: SearchItem[], query: string): SearchItem[] {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function AppTopbar({ liveCount = 14 }: { liveCount?: number }) {
+export function AppTopbar({ liveCount = 14, marketCount = 2847 }: { liveCount?: number; marketCount?: number }) {
   const locale   = useLocale();
   const router   = useRouter();
+  const { data: session } = useSession();
+  const name     = session?.user?.name ?? 'Usuário';
+  const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef   = useRef<HTMLDivElement>(null);
 
@@ -227,9 +231,18 @@ export function AppTopbar({ liveCount = 14 }: { liveCount?: number }) {
 
       <div className="topbar-sep" />
 
-      <div className="live-pill">
-        <div className="live-dot" />
-        {liveCount} tips ao vivo
+      {/* Markets counter pill */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        background: 'oklch(65% 0.2 25 / 0.15)',
+        border: '1px solid oklch(65% 0.2 25 / 0.3)',
+        borderRadius: 20, padding: '4px 10px',
+        fontSize: 11, fontWeight: 700, color: 'var(--red)',
+        fontFamily: 'var(--font-cond)', letterSpacing: '.04em',
+        flexShrink: 0,
+      }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)', animation: 'pulse 1.2s ease-in-out infinite', display: 'inline-block' }} />
+        {marketCount.toLocaleString('pt-BR')} mercados
       </div>
 
       <ThemeToggle />
@@ -241,11 +254,25 @@ export function AppTopbar({ liveCount = 14 }: { liveCount?: number }) {
         </svg>
       </button>
 
-      <Link href={`/${locale}/configuracoes`} className="icon-btn" aria-label="Configurações" style={{ textDecoration: 'none' }}>
+      <button className="icon-btn" aria-label="Ajuda">
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-          <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.2"/>
-          <path d="M7.5 1v2M7.5 12v2M1 7.5h2M12 7.5h2M2.9 2.9l1.4 1.4M10.7 10.7l1.4 1.4M2.9 12.1l1.4-1.4M10.7 4.3l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.2"/>
+          <path d="M5.5 5.5a2 2 0 013.5 1.4c0 1.1-1 1.6-1.5 2.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          <circle cx="7.5" cy="11" r=".6" fill="currentColor"/>
         </svg>
+      </button>
+
+      {/* User avatar + name */}
+      <Link href={`/${locale}/configuracoes`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7, padding: '4px 6px 4px 4px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--s2)', transition: 'border-color .15s' }}
+        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--bd2)')}
+        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+      >
+        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'oklch(75% 0.22 145)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+          {initials}
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {name.split(' ')[0]}
+        </span>
       </Link>
     </div>
   );
