@@ -3959,6 +3959,47 @@ aside {
 [data-theme="light"] { --nav-bg: rgba(255,255,255,0.95); }
 
 /* ============================================================
+   DARK MODE OVERRIDES — EV detector cards (hero right column)
+   Cards têm cores hard-coded para o tema light (OddSeek (1).html).
+   Aqui sobrescrevemos para o tema dark da landing.
+   ============================================================ */
+[data-theme="dark"] .det-card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 24px 60px -28px rgba(0,0,0,0.55), 0 6px 18px -10px rgba(0,0,0,0.30);
+}
+[data-theme="dark"] .det-head    { color: var(--muted); }
+[data-theme="dark"] .det-tn      { color: var(--text); }
+[data-theme="dark"] .det-trec    { color: var(--muted); }
+[data-theme="dark"] .det-vs      { color: var(--muted); }
+[data-theme="dark"] .det-tlogo   { background: var(--s2); border-color: var(--bd2); }
+[data-theme="dark"] .det-prob {
+  background: var(--s2);
+  border-color: var(--border);
+}
+[data-theme="dark"] .det-prob .ph { color: var(--muted); }
+[data-theme="dark"] .det-prob .pv { color: var(--text); }
+[data-theme="dark"] .det-ev-tip   { color: var(--muted); }
+[data-theme="dark"] .det-ev-pick  { color: var(--text); }
+[data-theme="dark"] .det-ev-pick .ev-muted { color: var(--muted); }
+
+[data-theme="dark"] .mov-card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 16px 40px -22px rgba(0,0,0,0.45);
+}
+[data-theme="dark"] .mov-text  { color: var(--text); }
+
+[data-theme="dark"] .spark-card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 16px 40px -22px rgba(0,0,0,0.45);
+}
+[data-theme="dark"] .spark-v     { color: var(--text); }
+[data-theme="dark"] .spark-v .spark-muted { color: var(--muted); }
+[data-theme="dark"] .spark-sub   { color: var(--muted); }
+
+/* ============================================================
    MOBILE — tip cards improvements
    ============================================================ */
 @media (max-width: 768px) {
@@ -4058,8 +4099,8 @@ aside {
    ============================================================ */
 .dash { padding: 0 28px 28px; display: flex; flex-direction: column; gap: 20px; }
 
-/* Page header */
-.ph { padding: 28px 32px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: var(--surface); border-bottom: 1px solid var(--bd2); }
+/* Page header — sangra pelas bordas do app-content (padding 24px/28px) */
+.ph { margin: -24px -28px 28px; padding: 28px 32px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: var(--surface); border-bottom: 1px solid var(--bd2); }
 .ph-crumb { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .ph-crumb::before { content: ''; display: inline-block; width: 18px; height: 2px; background: var(--lime); border-radius: 2px; }
 .ph-h { font-family: var(--font-cond); font-size: clamp(44px, 5.5vw, 72px); font-weight: 900; text-transform: uppercase; letter-spacing: -.02em; line-height: .95; color: var(--text); margin: 0 0 10px; }
@@ -4160,7 +4201,7 @@ aside {
 }
 @media (max-width: 640px) {
   .dash { padding: 0 16px 24px; }
-  .ph { padding: 16px 16px 12px; }
+  .ph { margin: -16px -16px 16px; padding: 20px 16px 16px; }
   .dash-kpi-grid { grid-template-columns: 1fr 1fr; }
 }
 

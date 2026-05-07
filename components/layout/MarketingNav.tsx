@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { OddSeekMark } from '@/components/brand/OddSeekMark';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 export async function MarketingNav() {
   const locale = await getLocale();
@@ -47,6 +48,9 @@ export async function MarketingNav() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {/* Theme toggle */}
+        <ThemeToggle />
+
         {/* Language switcher */}
         <Link
           href={locale === 'pt-BR' ? '/en' : '/pt-BR'}
