@@ -258,6 +258,27 @@ button {
   background: radial-gradient(ellipse 70% 70% at 55% 10%, oklch(80% 0.3 115 / 0.08) 0%, transparent 60%);
 }
 
+/* Light theme — efeitos mais intensos para contrastar no fundo claro */
+[data-theme="light"] .field-bg::before {
+  background-image:
+    radial-gradient(ellipse 100% 55% at 50% 50%, transparent 57%, rgba(123,196,42,0.18) 57.5%, transparent 58.5%),
+    radial-gradient(ellipse 65% 36% at 50% 50%,  transparent 57%, rgba(123,196,42,0.14) 57.5%, transparent 58.5%),
+    radial-gradient(ellipse 35% 20% at 50% 50%,  transparent 57%, rgba(123,196,42,0.10) 57.5%, transparent 58.5%),
+    linear-gradient(90deg, rgba(123,196,42,0.08) 1px, transparent 1px),
+    linear-gradient(rgba(123,196,42,0.08) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 80px 80px, 80px 80px;
+}
+[data-theme="light"] .field-bg::after {
+  background:
+    radial-gradient(ellipse 65% 55% at 78% 15%, rgba(123,196,42,0.28) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 40% at 10% 88%, rgba(123,196,42,0.18) 0%, transparent 65%);
+}
+
+/* Light theme — glow no topo da hero */
+[data-theme="light"] .hero-v2-glow {
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(123,196,42,0.22) 0%, transparent 70%) !important;
+}
+
 /* --- BTNS --- */
 .btn {
   height: 32px;
@@ -3659,10 +3680,12 @@ aside {
   font-family: var(--font-cond), 'Barlow Condensed', sans-serif;
   font-size: 11px;
 }
-.det-prob .ph {
+.det-prob .prob-lbl {
   color: #7B7770;
   font-weight: 700;
   letter-spacing: .06em;
+  font-size: 11px;
+  text-transform: uppercase;
 }
 .det-prob .pv {
   font-weight: 800;
@@ -3977,7 +4000,7 @@ aside {
   background: var(--s2);
   border-color: var(--border);
 }
-[data-theme="dark"] .det-prob .ph { color: var(--muted); }
+[data-theme="dark"] .det-prob .prob-lbl { color: var(--muted); }
 [data-theme="dark"] .det-prob .pv { color: var(--text); }
 [data-theme="dark"] .det-ev-tip   { color: var(--muted); }
 [data-theme="dark"] .det-ev-pick  { color: var(--text); }

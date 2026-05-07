@@ -22,11 +22,15 @@ export async function Hero({ locale }: Props) {
     <section className="hero-v2">
       <DottedSurface />
       <SpiralAnimation />
-      <div style={{
-        pointerEvents: 'none', position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse 70% 45% at 50% 0%, oklch(80% 0.3 115 / 0.10) 0%, transparent 70%)',
-        zIndex: 0,
-      }} />
+      {/* Glow top — dark: lime sutil; light: lima mais forte via .hero-v2-glow */}
+      <div
+        className="hero-v2-glow"
+        style={{
+          pointerEvents: 'none', position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse 70% 45% at 50% 0%, oklch(80% 0.3 115 / 0.10) 0%, transparent 70%)',
+          zIndex: 0,
+        }}
+      />
       <div className="field-bg" />
 
       {/* ── 2-COLUMN GRID: text left · EV cards right ── */}

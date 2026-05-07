@@ -54,13 +54,13 @@ export function EVDetectorCards() {
 
         {/* Probability row */}
         <div className="det-prob">
-          <span className="ph">FLA</span>
+          <span className="prob-lbl">FLA</span>
           <span className="pv win">54%</span>
-          <span className="ph">EMP</span>
+          <span className="prob-lbl">EMP</span>
           <span className="pv">26%</span>
-          <span className="ph">PAL</span>
+          <span className="prob-lbl">PAL</span>
           <span className="pv">20%</span>
-          <span className="ph" style={{ color: '#7BC42A' }}>↗</span>
+          <span className="prob-lbl" style={{ color: '#7BC42A' }}>↗</span>
         </div>
 
         {/* EV pick box */}
