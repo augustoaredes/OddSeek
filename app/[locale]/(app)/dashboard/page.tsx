@@ -218,7 +218,7 @@ export default async function DashboardPage({
         </div>
         <div className="ph-r">
           <Link href={`/${locale}/odds`} className="btn btn-lime" style={{ fontSize: 12 }}>
-            Sincronizar Casas
+            Ver Odds ao Vivo
           </Link>
         </div>
       </div>
