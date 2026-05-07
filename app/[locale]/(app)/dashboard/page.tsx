@@ -217,12 +217,8 @@ export default async function DashboardPage({
           </div>
         </div>
         <div className="ph-r">
-          <Link href={`/${locale}/banca/apostas`} className="btn btn-ghost" style={{ fontSize: 12 }}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 6h9M6 1.5v9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            Nova aposta
-          </Link>
           <Link href={`/${locale}/odds`} className="btn btn-lime" style={{ fontSize: 12 }}>
-            Ver odds ao vivo
+            Sincronizar Casas
           </Link>
         </div>
       </div>

@@ -4059,13 +4059,21 @@ aside {
 .dash { padding: 0 28px 28px; display: flex; flex-direction: column; gap: 20px; }
 
 /* Page header */
-.ph { padding: 28px 28px 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ph { padding: 28px 32px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: var(--surface); border-bottom: 1px solid var(--bd2); }
 .ph-crumb { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .ph-crumb::before { content: ''; display: inline-block; width: 18px; height: 2px; background: var(--lime); border-radius: 2px; }
 .ph-h { font-family: var(--font-cond); font-size: clamp(44px, 5.5vw, 72px); font-weight: 900; text-transform: uppercase; letter-spacing: -.02em; line-height: .95; color: var(--text); margin: 0 0 10px; }
-.ph-h em { font-style: normal; font-weight: 300; color: transparent; -webkit-text-stroke: 1.5px var(--muted); }
+.ph-h em { font-style: normal; font-weight: 300; color: transparent; -webkit-text-stroke: 1.5px var(--bd2); }
 .ph-sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
-.ph-r { display: flex; gap: 8px; align-items: center; flex-shrink: 0; align-self: flex-end; padding-bottom: 10px; }
+.ph-r { display: flex; gap: 8px; align-items: center; flex-shrink: 0; align-self: flex-end; padding-bottom: 6px; }
+
+/* Topbar search */
+.topbar-search { flex: 1; max-width: 480px; position: relative; }
+.topbar-search input { width: 100%; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 36px 7px 34px; font-size: 13px; color: var(--text); outline: none; font-family: inherit; box-sizing: border-box; transition: border-color .15s; }
+.topbar-search input:focus { border-color: var(--bd2); }
+.topbar-search input::placeholder { color: var(--dim); }
+.topbar-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--dim); pointer-events: none; }
+.topbar-search-kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 600; color: var(--dim); background: var(--border); border-radius: 4px; padding: 2px 5px; pointer-events: none; letter-spacing: .04em; }
 
 /* KPI grid */
 .dash-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }

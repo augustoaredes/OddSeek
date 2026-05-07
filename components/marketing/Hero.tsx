@@ -50,6 +50,11 @@ export async function Hero({ locale }: Props) {
           {/* Subtitle */}
           <p className="hero-v2-sub">{t('sub_v2')}</p>
 
+          {/* Live score pill — demonstração de dados ao vivo */}
+          <div style={{ marginBottom: 24 }}>
+            <LiveScoreWidget />
+          </div>
+
           {/* Email capture */}
           <form action={`/${locale}/registro`} method="GET" className="hero-v2-form">
             <input
@@ -91,17 +96,6 @@ export async function Hero({ locale }: Props) {
 
       </div>
 
-      {/* ── APP PREVIEW (below the 2-col grid, hidden on desktop if screen is tight) ── */}
-      <div style={{
-        position: 'relative',
-        zIndex: 10,
-        width: '100%',
-        maxWidth: 960,
-        margin: '48px auto 0',
-        padding: '0 20px',
-      }}>
-        <LiveScoreWidget />
-      </div>
     </section>
   );
 }
