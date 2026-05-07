@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getDb } from './db/client';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 import { logger } from './logger';
+import { writeAudit } from './audit';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -93,6 +94,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth(() => ({
       if (isNewUser) {
         logger.info({ userId: user.id }, 'New user registered via OAuth');
       }
+      await writeAudit({ userId: user.id ?? undefined, action: 'login', meta: { isNewUser: isNewUser ?? false } });
+    },
+    async signOut(message) {
+      const t = 'token' in message ? message.token : null;
+      const uid = t && typeof t === 'object' ? String((t as Record<string, unknown>).id ?? '') : undefined;
+      if (uid) await writeAudit({ userId: uid, action: 'logout' });
     },
   },
   trustHost: true,

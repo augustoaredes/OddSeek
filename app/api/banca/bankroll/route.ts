@@ -3,6 +3,8 @@ import { getDb } from '@/lib/db/client';
 import { bankrolls } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { apiRatelimit, checkRateLimit } from '@/lib/ratelimit';
+import { writeAudit } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   const session = await auth();
@@ -55,6 +57,17 @@ export async function PATCH(req: Request) {
     })
     .where(eq(bankrolls.id, bankroll.id))
     .returning();
+
+  logger.info({ userId: session.user.id, bankrollId: bankroll.id }, 'bankroll updated');
+  await writeAudit({
+    userId: session.user.id,
+    action: 'bankroll.update',
+    target: bankroll.id,
+    meta: {
+      ...(body.initialAmount != null ? { initialAmount: body.initialAmount } : {}),
+      ...(body.riskProfile ? { riskProfile: body.riskProfile } : {}),
+    },
+  });
 
   return Response.json(updated);
 }
