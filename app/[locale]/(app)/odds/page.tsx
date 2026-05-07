@@ -102,10 +102,14 @@ export default async function OddsPage({ searchParams }: Props) {
     return best === -Infinity ? 0 : best;
   }
 
-  function winnerSelections(event: typeof allEvents[0]) {
-    const mkt = event.markets.find(m => m.market === 'match_winner');
-    return mkt?.selections ?? event.markets[0]?.selections ?? [];
+  function eventSelections(event: typeof allEvents[0]) {
+    const mkt = event.markets.find(m => m.market === market)
+             ?? event.markets.find(m => m.market === 'match_winner')
+             ?? event.markets[0];
+    return mkt?.selections ?? [];
   }
+
+  const marketLabel = MARKET_SECTIONS.flatMap(s => s.items).find(i => i.key === market)?.name ?? 'Seleções';
 
   const evColor = (ev: number) =>
     ev >= 0.10 ? 'var(--lime)' : ev >= 0.05 ? 'var(--green)' : ev > 0 ? 'var(--amber)' : 'var(--muted)';
@@ -170,14 +174,14 @@ export default async function OddsPage({ searchParams }: Props) {
           }}>
             <div>Hora</div>
             <div>Partida</div>
-            <div style={{ textAlign: 'center' }}>Odds (H · D · A)</div>
+            <div style={{ textAlign: 'center' }}>{market === 'match_winner' ? 'Odds (H · D · A)' : marketLabel}</div>
             <div style={{ textAlign: 'center' }}>Melhor EV</div>
             <div />
           </div>
 
           {list.map((event, i) => {
             const ev = bestEV(event);
-            const sels = winnerSelections(event);
+            const sels = eventSelections(event);
             const selCount = Math.min(sels.length, 3);
             return (
               <Link key={event.id} href={`/${locale}/odds/${event.id}`} style={{ textDecoration: 'none' }}>

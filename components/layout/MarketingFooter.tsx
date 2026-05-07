@@ -38,33 +38,25 @@ export async function MarketingFooter() {
         {t('disclaimer')}
       </p>
 
-      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-        <Link
-          href={`/${locale}/termos`}
-          style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}
-        >
-          {t('terms')}
-        </Link>
-        <Link
-          href={`/${locale}/privacidade`}
-          style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}
-        >
-          {t('privacy')}
-        </Link>
-        <Link
-          href={`/${locale}/aviso-risco`}
-          style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}
-        >
-          {t('risk')}
-        </Link>
-        <span
-          style={{
-            fontSize: 11,
-            color: 'var(--dim)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-          }}
-        >
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        {([
+          { href: `/${locale}/sobre`,     label: 'Sobre' },
+          { href: `/${locale}/faq`,       label: 'FAQ' },
+          { href: `/${locale}/afiliados`, label: 'Afiliados' },
+          { href: `/${locale}/contato`,   label: 'Contato' },
+          { href: `/${locale}/termos`,    label: t('terms') },
+          { href: `/${locale}/privacidade`, label: t('privacy') },
+          { href: `/${locale}/aviso-risco`, label: t('risk') },
+        ] as { href: string; label: string }[]).map(item => (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', textDecoration: 'none' }}
+          >
+            {item.label}
+          </Link>
+        ))}
+        <span style={{ fontSize: 11, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           © {new Date().getFullYear()} {t('copy')}
         </span>
       </div>

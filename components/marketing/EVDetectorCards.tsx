@@ -1,6 +1,8 @@
 /* EV Detector Cards — hero right column
- * Faithful port of det-card, mov-card, spark-card from OddSeek (1).html
- * Adapted to the dark app theme (var(--surface), var(--lime), etc.)
+ * Ported directly from OddSeek (1).html — exact structure + hard-coded colors
+ * Colors match .hero local overrides in the HTML reference:
+ *   --lime:#7BC42A  --green:#2F8F3F  --amber:#D89020
+ *   --muted:#7B7770 --text:#15161A   --dim:#A8A29A
  */
 
 export function EVDetectorCards() {
@@ -58,7 +60,7 @@ export function EVDetectorCards() {
           <span className="pv">26%</span>
           <span className="ph">PAL</span>
           <span className="pv">20%</span>
-          <span className="ph" style={{ color: 'var(--lime)' }}>↗</span>
+          <span className="ph" style={{ color: '#7BC42A' }}>↗</span>
         </div>
 
         {/* EV pick box */}
@@ -72,9 +74,9 @@ export function EVDetectorCards() {
           </div>
           <div className="det-ev-r">
             <div className="det-ev-num">
-              +11.8<sup>%</sup>
+              +11.8<span>%</span>
             </div>
-            <div className="det-ev-lab">Expected Value</div>
+            <div className="det-ev-lab">EXPECTED VALUE</div>
           </div>
         </div>
       </div>
